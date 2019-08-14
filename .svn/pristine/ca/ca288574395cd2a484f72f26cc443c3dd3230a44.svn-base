@@ -1,0 +1,277 @@
+<template>
+  <div class="classmain"> 
+     
+    <div class="classwarp clearfix">
+      <p class="classtitle">常用班级</p>
+      <div  v-for="(item,index) in commClass" :key="index" class="choosetagsWarp">
+        <img src="static/img/dot-cleartxt.png" @click="deleteClass(index,item.bjdm)"/>
+        <van-tag class="tags choosetags" type="primary">{{item.bjmc}}</van-tag>
+      </div>
+    </div>
+
+    <div class="classwarp clearfix" v-for="(item,index) in classData" :key="index">
+      <p class="classtitle">{{item.njmc}}</p>
+      <div @click="setClass(index,childIndex)" v-for="(childItem,childIndex) in item.objectOne" :key="childIndex">
+        <van-tag v-if="childItem.check == true" class="tags" type="primary">{{childItem.bjmcs}}</van-tag>
+        <van-tag v-else class="tags" plain >{{childItem.bjmcs}}</van-tag>
+      </div>
+    </div>
+
+
+     <div class="classwarp clearfix" v-if="allData.length != 0">
+       <p class="classtitle">全部班级</p>
+      <div @click="setAllClass(index)" v-for="(item,index) in allData" :key="index">
+          <van-tag v-if="item.check == true" class="tags" type="primary">{{item.bj}}</van-tag>
+          <van-tag v-else class="tags" plain >{{item.bj}}</van-tag>
+      </div>
+     </div>
+
+
+    <div class="saveset" @click="saveSet">保存</div>
+    
+
+
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../utils/Api/index";
+  import _ from "lodash";
+  export default {
+    name: "setClass",
+    data(){
+      return {
+        classData:[],//班级数据
+        commClass:[],//设置常用班级数组
+        copyCommClass:[],//复制常用班级数组
+        allData:[],
+      }
+    },
+    mounted() {
+      this.getCybjList();
+    },
+    methods: {
+      saveSet(){//点击保存设置的常用班级
+        this.$post(api.setCybjList(),{zgh: localStorage.getItem('zgh'),xxdm:localStorage.getItem('xxdm'),cybjVOList:this.copyCommClass
+        },{headers:'application/json'}).then(res=>{
+          if(res.status == 200){
+            this.$toast.success('设置成功');
+            setTimeout(() => {
+              this.$router.push({path:'/pages/teacher/home'})
+            }, 3000);
+          }
+        })
+      },
+      /**
+       * @description: 获取常用班级
+       * @param {type} 
+       * @return: 
+       */
+      async getCybjList(){
+        this.$fetch(api.getCybjList(), {zgh: localStorage.getItem('zgh'),xxdm:localStorage.getItem('xxdm'),xndm:localStorage.getItem('xn')}).then(res=>{
+          this.copyCommClass = res.data;
+          this.commClass = res.data;
+          this.getQxBjList()
+        });
+      },
+      /**
+       * @description: 获取年级
+       * @param {type} 
+       * @return: 
+       */
+      async getQxBjList(){
+       // await this.getCybjList();
+        console.log(this.copyCommClass,66666677777777)
+        var {data} = await this.$fetch(api.getQxBjList(),{zgh:localStorage.getItem('zgh'),xxdm:localStorage.getItem('xxdm'),xndm:localStorage.getItem('xn')});
+        this.classData = data;
+        if(data.length == 0){
+          var allDatas = await this.$fetch(api.selectBjList(),{xxdm:localStorage.getItem('xxdm'),dqxn:localStorage.getItem('xn')});
+          this.allData = allDatas;
+           //console.log(this.allData,888)
+          // console.log(this.copyCommClass)
+          this.allData.forEach((item,index)=>{
+            // let tempClass=this.copyCommClass.find((val,Tindex,arr) =>{
+            //     console.log(val.bjdm,item.uuid,4444444)
+            //     return item.uuid == val.bjdm
+            //   })
+              let tempClass = _.findIndex(this.copyCommClass, function(o) { return o.bjdm == item.uuid; });
+              console.log(tempClass)
+              if(tempClass != -1){
+                this.$set(this.allData[index],'check',true);//已选为常用班级
+              }else{
+                this.$set(this.allData[index],'check',false);//未选为常用班级
+
+              }
+          })
+          return;
+        }
+        
+        console.log(this.classData,666)
+        this.classData.forEach((item,index)=>{
+         
+          item.objectOne.forEach((childItem,childIndex)=>{
+            //let tempClass=this.copyCommClass.find((val,Tindex,arr) =>{
+              //return item.bjdm == val.bjdm
+           // })
+            console.log(childItem,55)
+          //  console.log(this.copyCommClass,66666677777777)
+
+            let tempClass = _.findIndex(this.copyCommClass, function(o) { return o.bjdm == childItem.bjdm; });
+            console.log(item)
+            if(tempClass != -1){
+              this.$set(this.classData[index].objectOne[childIndex],'check',true);//已选为常用班级
+            }else{
+              this.$set(this.classData[index].objectOne[childIndex],'check',false);//未选为常用班级
+
+            }
+            
+          })
+        })
+      },
+      /**
+       * @description: 点击班级  加入常用班级
+       * @param {type} 
+       * @return: 
+       */
+      setClass(index,childIndex){
+        // console.log(44444444)
+        let tempClass=this.copyCommClass.find((val,Tindex,arr) =>{
+          return this.classData[index].objectOne[childIndex].bjdm == val.bjdm
+        })
+        if(tempClass != undefined){//防止重复选中常用班级
+          return;
+        }
+        this.$set(this.classData[index].objectOne[childIndex],'check',true);
+        this.copyCommClass.push({
+          bjdm: this.classData[index].objectOne[childIndex].bjdm,
+          bjmc: this.classData[index].objectOne[childIndex].bjmcs,
+          njdm: this.classData[index].objectOne[childIndex].njdm,
+          njmc: this.classData[index].objectOne[childIndex].njmc,
+        })
+        this.commClass = Object.assign({}, this.copyCommClass);
+      },
+      /**
+       * @description: 删除常用班级
+       * @param {type} 
+       * @return: 
+       */
+      deleteClass(index,bjdm){
+        if(this.classData.length == 0){
+          this.allData.forEach((item,index)=>{
+            if(bjdm == item.uuid){
+              this.$set(this.allData[index],'check',false);//取消全部班级选中的状态
+            }
+          })
+        }
+        this.classData.forEach((item,index)=>{
+          item.objectOne.forEach((itemChild, indexChild) => {
+            if(bjdm == itemChild.bjdm){
+              this.$set(this.classData[index].objectOne[indexChild],'check',false);//取消全部班级选中的状态
+            }
+          })
+        })
+        this.copyCommClass.splice(index,1);//删除所取消的班级
+        this.commClass = Object.assign({}, this.copyCommClass);
+      },
+      /**
+       * @description: 获取全部班级时 设置常用班级
+       * @param {type} 
+       * @return: 
+       */
+      setAllClass(index){
+        //console.log(this.allData,888)
+        let tempClass=this.copyCommClass.find((val,Tindex,arr) =>{                                            
+          return this.allData[index].uuid == val.bjdm
+        })
+        if(tempClass != undefined){//防止重复选中常用班级
+          return;
+        }
+        this.$set(this.allData[index],'check',true);
+        this.copyCommClass.push({
+          bjdm: this.allData[index].uuid,
+          bjmc: this.allData[index].bj,
+          njdm: this.allData[index].njdm,
+          njmc: '',
+        })
+        this.commClass = Object.assign({}, this.copyCommClass);
+      }
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+  }
+
+  .classmain{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    .classwarp{
+      div{
+        float: left;
+      }
+      .choosetagsWarp{
+        position: relative;
+        img{
+          position: absolute;
+          right:px2rem(-10px);
+          top:px2rem(5px);
+          width: px2rem(40px);
+          height: px2rem(40px);
+        }
+      }
+    }
+    .classtitle{
+      font-size: px2rem(32px);
+      margin-left: px2rem(34px);
+      margin-top:px2rem(50px);
+      color:#000;
+      
+    }
+    .tags{
+      width: px2rem(200px);
+      height: px2rem(64px);
+      margin-left: px2rem(28px);
+      text-align: center;
+      font-size: px2rem(26px);
+      font-family:'PingFang-SC-Bold';
+      border-radius: px2rem(40px);
+      line-height: px2rem(54px);
+      
+    }
+    .saveset{
+      width: 90%;
+      height: px2rem(88px);
+      background-color: #3e81ff;
+      color:#fff;
+      font-size: px2rem(34px);
+      line-height: px2rem(88px);
+      text-align: center;
+      margin:px2rem(50px) auto;
+      border-radius: px2rem(60px);
+    }
+    
+  }
+  .van-tag{
+    border-radius: px2rem(40px);
+    overflow: hidden;
+    text-overflow:ellipsis;
+    white-space: nowrap;
+  }
+  
+  .van-tag::after {
+    border-radius:3em;
+  }
+</style>
+
+
+<style lang="scss">
+  @import '../../../style/style.scss';
+  .choosetags{
+    background-color: #d8e6ff !important;
+    color:#3e81ff !important;
+  }
+</style>

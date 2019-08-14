@@ -1,0 +1,296 @@
+<template>
+  <div class="rankwarp">
+    <van-tabs v-model="active" color="#3e81ff">
+      <van-tab title="学校">
+        
+       
+
+
+        
+        <div class="listwarp">
+          <div class="list">
+            <div class="imgleft">
+              <img src="../../../../assets/1.png" class=""/>
+            </div>
+            <div class="infomid">
+              <p>榜主名</p>
+              <p>一年级</p>
+            </div>
+            <div class="imgright clearfix">
+              <span class="spanwarp">
+                <span>10</span>
+                <img src="../../../../assets/cardicon.png" />
+              </span>
+              <p @click="moreList()">查看{{blnum}}名并列</p>
+            </div>
+          </div>
+          <div class="morelist">
+            <div class="imgleft">
+              <img src="../../../../assets/1.png" class=""/>
+            </div>
+            <div class="infomid">
+              <p>榜主名</p>
+              <p>一年级</p>
+            </div>
+            <div class="imgright clearfix">
+              <span class="spanwarp">
+                <span>10</span>
+                <img src="../../../../assets/cardicon.png" />
+              </span>
+            </div>
+          </div>
+        </div>
+        
+
+
+
+
+        <div class="list">
+          <div class="imgleft">
+            <img src="../../../../assets/1.png" class=""/>
+          </div>
+          <div class="infomid">
+            <p>榜主名</p>
+            <p>一年级</p>
+          </div>
+          <div class="imgright clearfix">
+            <span class="spanwarp">
+              <span>10</span>
+              <img src="../../../../assets/cardicon.png" />
+            </span>
+            <p>查看{{blnum}}名并列</p>
+          </div>
+        </div>
+       
+
+
+      </van-tab >
+      <van-tab title="年级">内容 2</van-tab>
+      <van-tab title="班级">内容 3</van-tab>
+    </van-tabs>
+    <div @click="showpop" class="showweek clearfix">
+      <img class="weekicon" src="../../../../assets/weekicon.png"/>
+      <P>{{weekText}}</P>
+      <van-datetime-picker v-if="show"
+        v-model="currentDate"
+        type="year-month"
+        :min-date="minDate"
+        :formatter="formatter"
+        @confirm="confirmtime"
+        @cancel="canceltime"
+      />
+    </div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index";
+  
+  export default {
+    name: "rankingHome",
+    data(){
+      return {
+        active:0,//tab当前选中的模块
+        list:[
+          {
+            name:'全校',
+            val:0
+          },{
+            name:'年级',
+            val:1
+          },{
+            name:'班级',
+            val:2
+          }
+
+        ],
+        show:false,//是否展示切换时间面板
+        currentDate: new Date(),
+        weekText:'2019-02',
+        minDate: new Date(),
+        blnum:3,
+      }
+    },
+    mounted() {
+     
+    },
+    methods: {
+      /**
+       * @description: 是否展示切换时间面板
+       * @param {type} 
+       * @return: 
+       */
+      showpop(){
+        this.show = !this.show;
+      },
+      /**
+       * @description: 格式化时间
+       * @param {type} 
+       * @return: 
+       */
+      formatter(type, value) {
+        if (type === 'year') {
+          return `${value}年`;
+        } else if (type === 'month') {
+          return `${value}月`
+        }
+        return value;
+      },
+      /**
+       * @description: 时间面板点击取消 
+       * @param {type} 
+       * @return: 
+       */
+      canceltime(){
+        this.show = !this.show;
+        console.log(this.show)
+      },
+      /**
+       * @description: 时间面板点击确定 
+       * @param {type} 
+       * @return: 
+       */
+      confirmtime(){
+        this.show = !this.show;
+      },
+      /**
+       * @description: 展开排名并排列表 
+       * @param {type} 
+       * @return: 
+       */
+      moreList(){
+   
+      }
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+  }
+  .rankwarp{
+    width: 100%;
+    height: 100%;
+    .showweek{
+      width: 100%;
+      height: px2rem(88px);
+      box-shadow: 0px 0.1px 18px #f4f6fa;
+      font-size: px2rem(32px);
+      color:#303133;
+      display: block;
+      position:absolute;
+      top: px2rem(100px);
+      left: 0;
+      p{
+        margin-left: 40%;
+        width: px2rem(200px);
+        text-align: center;
+        line-height: px2rem(88px);
+      }
+      .weekicon{
+        width: px2rem(40px);
+        float: left;
+        margin-left: 40%;
+        margin-top:px2rem(20px);
+      }
+    }
+    .list{
+      display: -webkit-flex;      
+      display: flex;
+      -webkit-flex-flow: row nowrap;
+      flex-flow: row nowrap;
+      padding:px2rem(30px);
+      height: px2rem(155px);
+      border-bottom:1px solid #E0E0E0;
+      margin-top:px2rem(20px);
+    }
+    .morelist{
+      display: -webkit-flex;      
+      display: flex;
+      -webkit-flex-flow: row nowrap;
+      flex-flow: row nowrap;
+      padding:px2rem(30px);
+      height: px2rem(155px);
+      position: relative;
+    }  
+    .morelis:after{
+      content: ""; 
+      position: absolute; 
+      top: -20px; 
+      right: -22px; 
+      margin: 20px; 
+      border-right: 1px solid #757575; 
+      border-bottom: 1px solid #757575; 
+      width: 8px; 
+      height: 8px; 
+      transform: rotate(45deg);
+      -o-transform: rotate(45deg); 
+      -webkit-transform: rotate(45deg); 
+      -moz-transform: rotate(45deg); 
+      -ms-transform: rotate(45deg);
+    }
+    .imgleft{
+      width: px2rem(230px);
+      img{
+        width: px2rem(210px);
+        height: px2rem(94px);
+        border-radius: px2rem(14px);
+      }
+    }
+    .infomid{
+      width: px2rem(390px);
+      p:nth-child(1){
+        font-size: px2rem(30px);
+        padding-left: px2rem(30px);
+      }
+      p:nth-child(2){
+        font-size: px2rem(26px);
+        color:#666;
+        padding-top:px2rem(40px);
+        padding-left: px2rem(30px);
+      }
+    }
+    .imgright{
+      width: px2rem(210px);
+      .spanwarp{
+        display: block;
+        width: px2rem(210px);
+        height: px2rem(60px);
+        img{
+          width: px2rem(30px);
+          float: right;
+        }
+        span{
+          font-size: px2rem(28px);
+          color:#666;
+          float: right;
+          padding-top: px2rem(10px);
+        }
+      }
+      
+      p{
+        color: #C7C7CC;
+        font-size: px2rem(26px);
+        position: relative;
+        display: block;
+        width: px2rem(190px);
+        text-align: right;
+        padding-right:px2rem(20px);
+      }
+    }
+  }
+ 
+</style>
+
+
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .rankwarp{
+    .van-tab__pane{
+      margin-top:px2rem(120px);
+    }
+  }
+  
+</style>

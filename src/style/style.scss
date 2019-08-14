@@ -1,0 +1,49 @@
+@function px2rem($px) {
+  $rem: 75px;
+  @return ($px /$rem)+rem;
+}
+
+/* 渐变蓝色
+ * direction 渐变方向
+ * start  开始颜色
+ * end 结束颜色
+*/
+
+@mixin gradualBule($direction, $start, $end) {
+  background: -moz-linear-gradient($direction, $start, $end);
+  background: -webkit-linear-gradient($direction, $start, $end);
+  background: -o-linear-gradient($direction, $start, $end);
+  background: linear-gradient($direction, $start, $end);
+}
+
+/* 渐变蓝色
+ * direction 渐变方向
+ * start  开始颜色
+ * end 结束颜色
+*/
+
+@mixin gradualGrey($direction, $start, $end) {
+  background: -moz-linear-gradient($direction, $start, $end);
+  background: -webkit-linear-gradient($direction, $start, $end);
+  background: -o-linear-gradient($direction, $start, $end);
+  background: linear-gradient($direction, $start, $end);
+}
+
+@function px2rem($px) {
+  $rem: 75px;
+  @return ($px /$rem)+rem;
+}
+
+.clearfix {
+  zoom: 1;
+}
+
+.clearfix:after {
+  content: ".";
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  display: block;
+  clear: both;
+  overflow: hidden;
+}

@@ -1,0 +1,386 @@
+<template>
+  <div class="selectwarp">
+    <div @click="showpop" class="showweek clearfix">
+      <img class="weekicon" src="../../../../assets/weekicon.png"/>
+      <P>{{weekText}}</P>
+      <van-actionsheet
+        v-model="show"
+        :actions="actions"
+        cancel-text="取消"
+        @select="onSelect"
+        @cancel="onCancel"
+      />
+    </div>
+    
+    
+     <!-- 发卡记录为空时 -->
+    <div v-if="empty" class="cardwarp">
+      <img src="../../../../assets/empty.png" class="emptyimg"/>
+      <p class="emptyText">别让这里空着哟~</p>
+    </div>
+
+
+
+
+
+    <!-- 发卡记录不为空时 -->
+    <div v-else class="cardwarp">
+
+      <van-list
+        v-model="loading"
+        :finished="finished"
+        finished-text="没有更多了"
+        @load="onLoad"
+        @refresh="onRefresh"
+      >
+        <van-swipe-cell :right-width="65" :on-close="onClose">
+          <van-cell-group>
+            <div class="groupwarp" @click="cardDetail">
+              <img src="../../../../assets/1.png"  class="groupleft"/>
+              <div class="groupmid" >
+              </div>
+              <div class="groupright">
+                <p>获卡人：周杰伦</p>
+                <p>评价人：周杰伦</p>
+                <p>日期：2019-02-21</p>
+              </div>
+            </div>
+          </van-cell-group>
+          <span slot="right">删除</span>
+        </van-swipe-cell>
+      </van-list>
+
+
+      <van-popup v-model="showpopup">
+        <div class="popuptitle clearfix">
+          <p>记录详情</p>
+          <img src="../../../../assets/close.png" />
+        </div>
+        <img class="cardimg" src="../../../../assets/1.png" />
+        <p class="detailP">
+          <span>获卡学生</span>
+          <span>六一班-周杰伦</span>
+        </p>
+        <p class="detailP">
+          <span>评价人</span>
+          <span>六一班-任爱勤</span>
+        </p>
+        <p class="detailP">
+          <span>发卡日期</span>
+          <span>2019-02-22</span>
+        </p>
+        <p class="detailP">
+          <span>卡片评语</span>
+          <span>我爱周杰伦</span>
+        </p>
+      </van-popup>
+    </div>
+    
+    <div class="faka">发卡</div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index"
+  
+export default {
+  name:'cardRecord',
+  data() {
+    return {
+      show:false,//是否显示底部选择周数
+      empty:false,//发卡记录是否为空
+      actions: [//底部周数数据
+        {
+          name: '全部',
+          val:0
+        },
+        {
+          name: '当前周',
+          val: 1
+        },
+        {
+          name: '第一周',
+          val: 2
+        },
+      ],
+      weekText:'第一周',//当前所选的周数值
+      showpopup:false,
+      loading: false,//是否显示加载
+      finished: false,//是否显示刷新
+      list:[],//卡片记录
+    }
+  },
+  mounted(){
+    this.queryPageList();
+  },
+  methods: {
+    /** 
+     * 切换底部周数
+    */
+    showpop(){//
+      this.show = true;
+    },
+    /** 
+     * 选择底部周数
+    */
+    onSelect(e){//
+      this.weekText = e.name;
+      this.show = false;
+    },
+    /** 
+     * 底部周数选择取消
+    */
+    onCancel(){//
+   
+    },
+    /** 
+     * 右滑删除发卡记录
+    */
+    onClose(clickPosition, instance) {
+      switch (clickPosition) {
+        case 'left':
+        case 'cell':
+        case 'outside':
+          instance.close();
+          break;
+        case 'right':
+          this.$dialog.confirm({
+            message: '确定删除吗？'
+          }).then(() => {
+            instance.close();
+          });
+          break;
+      }
+    },
+    /** 
+     * 点击列表显示发卡详情
+    */
+    cardDetail(){
+      console.log(7777777777777)
+    },
+    /**
+     * @description: 获取发卡记录列表
+     * @param {type} 
+     * @return: 
+     */
+    queryPageList(){
+      let that = this;
+      that.$fetch(api.queryPageList(), {xxdm: localStorage.getItem('xxdm'),xqdm:localStorage.getItem('xq'),xndm:localStorage.getItem('xn'),page:1,limit:10}).then(res => {
+        if(res.status == 200){
+          that.list.push(res.data.rows)
+         console.log(res)
+        }
+      });
+    },
+    /**
+     * @description: 上拉加载
+     * @param {type} 
+     * @return: 
+     */
+    onLoad() {
+      console.log('加载啦');
+      // 异步更新数据
+      // setTimeout(() => {
+        
+      //   // 加载状态结束
+      //   this.loading = false;
+
+      //   // 数据全部加载完成
+      //   if (this.list.length >= 40) {
+      //     this.finished = true;
+      //   }
+      // }, 500);
+    },
+    /**
+     * @description: 下拉刷新
+     * @param {type} 
+     * @return: 
+     */
+    onRefresh(){
+      console.log('刷新啦');
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+    position: relative;
+  }
+  .selectwarp{
+    width: 100%;
+    height: 100%;
+    .showweek{
+      width: 100%;
+      height: px2rem(88px);
+      box-shadow: 0px 0.1px 18px #f4f6fa;
+      font-size: px2rem(32px);
+      color:#303133;
+      display: block;
+      position:absolute;
+      top: 0;
+      left: 0;
+      p{
+        margin-left: 47%;
+        width: px2rem(100px);
+        text-align: center;
+        line-height: px2rem(88px);
+      }
+      .weekicon{
+        width: px2rem(40px);
+        float: left;
+        margin-left: 40%;
+        margin-top:px2rem(20px);
+      }
+    }
+    .cardwarp{
+      height: 100%;
+      padding-top:px2rem(100px);
+      margin:0 px2rem(32px);
+      .groupwarp{
+        height: px2rem(160px);
+        .groupleft{
+          width: px2rem(344px);
+          float: left;
+          height: 100%;
+        }
+        .groupmid{
+          height: 100%;
+          float: left;
+          width: px2rem(8px);;
+          z-index: 44;
+          margin-left: -0.07rem;
+          background-image: radial-gradient(transparent 0, transparent 5px, #f0f3f8 3px);
+          background-size: 15px 8px;
+          background-position: 6px 14px;
+          position: relative;
+          &::before {
+            content: ' ';
+            display: block;
+            background-color: #f0f3f8;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 6px;
+            right: -5px;
+            z-index: 0;
+          }
+        }
+        .groupright{
+          float: left;
+          background-color: #f0f3f8;
+          width: px2rem(336px);
+          height: 100%;
+          border-top-right-radius: px2rem(20px);
+          border-bottom-right-radius: px2rem(20px);
+          p{
+            display: block;
+            height: px2rem(50px);
+            padding-left:px2rem(20px);
+          }
+          p:nth-child(1){
+            font-size: px2rem(30px);
+            color:#303133;
+            height: px2rem(60px);
+            line-height: px2rem(80px);
+            border-bottom:0.5px solid #e3e3e3;
+          }
+          p:nth-child(2){
+            font-size: px2rem(28px);
+            color:#606266;
+            padding-top:px2rem(14px);
+          }
+          p:nth-child(3){
+            font-size: px2rem(28px);
+            color:#606266;
+            padding-top:px2rem(10px);
+          }
+        }
+      }
+      .van-popup{
+        width: px2rem(598px);
+        padding-bottom: px2rem(30px);
+        border-radius: px2rem(30px);
+        .popuptitle{
+          width: 100%;
+          p{
+            float: left;
+            color:#303133;
+            font-size: px2rem(34px);
+            padding: px2rem(30px);
+            font-weight: 600;
+          }
+          img{
+            width: px2rem(30px);
+            height: px2rem(30px);
+            float: right;
+            margin-right:px2rem(30px);
+            margin-top:px2rem(30px);
+          }
+        }
+        .cardimg{
+          width: px2rem(550px);
+          margin:0 auto;
+          display: block;
+          border-radius: px2rem(30px);
+        }
+        .detailP{
+          span:nth-child(1){
+            color:#606266;
+            font-size: px2rem(30px);
+            padding-left: px2rem(30px);
+            width: px2rem(150px);
+            display: inline-block;
+          }
+          span:nth-child(2){
+            color:#000;
+            font-size: px2rem(30px);
+          }
+        }
+      }
+      
+    }
+    .faka{
+      position: fixed;
+      left: px2rem(50px);
+      bottom:px2rem(30px);
+      text-align: center;
+      line-height: px2rem(88px);
+      background-color: #3E81FF;
+      color:#fff;
+      width: px2rem(642px);
+      font-size: px2rem(36px);
+      border-radius: px2rem(50px);
+    }
+    .emptyimg{
+      width: px2rem(700px);
+      margin:px2rem(230px) auto px2rem(30px) auto;
+    }
+    .emptyText{
+      color:#606266;
+      text-align: center;
+      font-size: px2rem(30px);
+    }
+  }
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .van-swipe-cell{
+    margin-top:px2rem(30px);
+  }
+  .van-swipe-cell__right{
+    span{
+      font-size:px2rem(30px);
+      text-align:center;
+      background-color:#ff3b30;
+      color:#fff;
+      display:inline-block;
+      height: px2rem(160px);
+      line-height: px2rem(160px);
+      width: px2rem(140px);
+      margin-left:px2rem(2px);
+    }
+  }
+</style>

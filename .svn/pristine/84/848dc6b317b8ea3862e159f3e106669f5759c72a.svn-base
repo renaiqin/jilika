@@ -1,0 +1,3 @@
+// 供应商api
+let BASE = '/elearn/'
+//let BASE = '/elearn_cx/'

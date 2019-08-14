@@ -1,0 +1,78 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+    /* 教师端首页 */
+    {
+      path: "/",
+      redirect: '/pages/index'
+    },
+    /* 空白跳转页 */
+    {
+      path: "/pages/index",
+      name: "index",
+      component: () =>
+        import("../views/pages/index.vue")
+    },
+    /* 教师端首页 */
+    {
+      path: "/pages/teacher/home",
+      name: "home",
+      component: () =>
+        import("../views/pages/teacher/home.vue")
+    },
+    /* 教师端设置班级 */
+    {
+      path: "/pages/teacher/setClass",
+      name: "setClass",
+      component: () =>
+        import("../views/pages/teacher/setClass.vue")
+    },
+    /* 教师端发卡记录选择学生 */
+    {
+      path: "/pages/teacher/cardRecord/selectStudent",
+      name: "selectStudent",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/selectStudent.vue")
+    },
+    /* 教师端发卡记录首页 */
+    {
+      path: "/pages/teacher/cardRecord/cardRecord",
+      name: "cardRecord",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/cardRecord.vue")
+    },
+    /* 教师端发卡记录发卡 */
+    {
+      path: "/pages/teacher/cardRecord/postCard",
+      name: "postCard",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/postCard.vue")
+    },
+    /* 教师端发卡记录发卡详情 */
+    {
+      path: "/pages/teacher/cardRecord/cardDetail",
+      name: "cardDetail",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/cardDetail.vue")
+    },
+    /* 教师端发卡记录选择卡片 */
+    {
+      path: "/pages/teacher/cardRecord/selectCard",
+      name: "selectCard",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/selectCard.vue")
+    },
+    /* 教师端琅琊榜首页 */
+    {
+      path: "/pages/teacher/rankingList/rankingHome",
+      name: "rankingHome",
+      component: () =>
+        import("../views/pages/teacher/rankingList/rankingHome.vue")
+    }
+  ]
+})
+

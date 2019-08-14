@@ -1,0 +1,7 @@
+import * as teacherApi from './teacherApi'
+import * as studentApi from './studentApi'
+
+export const api = {
+  ...teacherApi,
+  ...studentApi,
+}

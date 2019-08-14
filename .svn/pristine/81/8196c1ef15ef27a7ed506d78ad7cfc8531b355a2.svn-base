@@ -1,0 +1,268 @@
+<template>
+  <div class="cardwarp">
+
+      <div class="cardBox" v-for="(item,index) in cardList" v-on:click="showDetail(index)">
+            <div class="cardImg">
+                <img src="../../../../assets/test1.png">
+            </div>
+            <div class="cardInfo">
+                <div class="f_cardname">获卡人：李冰冰</div>
+                <div class="f_cardinfo">
+                    评价人：{{getZghName(item.ckr)}}<br>
+                    日期：{{item.bfsj}}
+                </div>
+            </div>
+      </div>
+
+
+    <div class="mask" v-if="isMask">
+        <transition name="layer">
+            <div class="m_LayerCardDetail" v-show="isDetailLayer">
+                <div class="u_LayerTit">记录详情</div>
+                <div class="f_LayerClose" v-on:click="layerClose"></div>
+                <div class="u_LayerCont">
+                    <div class="f_CardImg"><img src="../../../../assets/test1.png"></div>
+                    <div class="f_CardInfo">
+                        <div class="f_CardCol clear">
+                            <div class="f_ColLeft">获卡学生</div>
+                            <div class="f_ColRight">{{detailCardObj.bjmc}} - {{detailCardObj.xm}}</div>
+                        </div>
+                        <div class="f_CardCol clear">
+                            <div class="f_ColLeft">评价人</div>
+                            <div class="f_ColRight">{{detailCardObj.pjr}}</div>
+                        </div>
+                        <div class="f_CardCol clear">
+                            <div class="f_ColLeft">发卡日期</div>
+                            <div class="f_ColRight">{{detailCardObj.bfsj}}</div>
+                        </div>
+                        <div class="f_CardCol clear">
+                            <div class="f_ColLeft">卡片评语</div>
+                            <div class="f_ColRight">{{detailCardObj.fkpy}}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+    </div>
+    
+  </div>
+</template>
+
+<script>
+  import _ from 'lodash';
+  import { api } from "../../../../utils/Api/index";
+import { setTimeout } from 'timers';
+  export default {
+    name: "cardsList",
+    data(){
+        return {
+            isMask:false,                   //是否显示遮罩层
+            isDetailLayer:false,            //是否显示详细弹层
+            cardList:[],                    //当前卡片的列表
+            teacherList:[],                 //当前学校的教师列表
+            detailCardObj:{},               //弹层显示具体卡片信息
+        }
+    },
+    mounted() {
+        this.init() 
+    },
+    components:{    //这里是注册你所需要的组件的地方 上面import进来,这里注册
+    
+    },
+    methods: {
+        async init(){
+            //获取教师列表
+            var parmaobj = {
+                xxdm:localStorage.getItem('xxdm'),
+            }
+            this.teacherList = await this.$fetch(api.getZghList(),parmaobj);
+
+            //获取卡用户某个类型卡的列表
+            var parmaobj = {
+                xxdm:localStorage.getItem('xxdm'),
+                xndm:this.$route.query.xn,
+                xqdm:this.$route.query.xq,
+                xh:"30170115145913001",
+                kplx:this.$route.query.kplx
+            }
+            var {data} = await this.$fetch(api.getCardInfo(),parmaobj);
+            this.cardList = data;
+        },
+        /**
+         * 说明:显示详细卡片的详细信息
+         * 作者:RayJ
+         * 更新时间:2019-03-05
+         */
+        async showDetail(index){
+            this.isMask = true;
+            var parmaobj = {
+                xxdm:"1438",
+                xh:"30170115145913001",
+            }
+            //获取学生信息取出班级ID
+            var res = await this.$fetch(api.getStuInfo(),parmaobj);
+            //根据班级ID获取班级名称
+            var {data} = await this.$fetch(api.getBjInfo(res.bjid),{});
+            this.detailCardObj.bjmc = data.bj;
+            this.detailCardObj.xm = "李冰冰";
+            this.detailCardObj.pjr = this.getZghName(this.cardList[index].ckr);
+            this.detailCardObj.bfsj = this.cardList[index].bfsj;
+            this.detailCardObj.fkpy = this.cardList[index].fkpy;
+            this.isDetailLayer = true;
+        },
+        /**
+         * 说明:关闭具体显示弹层
+         * 作者:RayJ
+         * 更新时间:2019-03-05
+         */
+        layerClose(){
+            var that = this;
+            this.isDetailLayer = false;           
+            setTimeout(function(){
+                that.isMask = false;
+            },300)
+        },
+        getZghName(zgh){
+            var zgobj = _.find(this.teacherList, {'gh':zgh});
+            return zgobj.xm;
+        },
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .mask{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+    .layer-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+    .layer-leave-active{
+        animation-name:fadeOutLeft;animation-duration:.5s;
+    }
+    .cardwarp{
+        background: #ffffff;
+        min-height: 100%;
+        padding: px2rem(10px) px2rem(32px);
+    }
+    .cardBox{
+        width: 100%;
+        height: px2rem(160px);
+        border-radius: px2rem(12px);
+        margin-top: px2rem(30px);
+        float: left;
+        overflow: hidden;
+    }
+    .cardImg{
+        width: px2rem(360px);
+        height: px2rem(160px);
+        float: left;
+        img{
+            width: 100%;
+            height: 100%;
+        }
+    }
+    .cardInfo{
+        width: px2rem(338px);
+        height: px2rem(160px);
+        float: left;
+        background: url(../../../../assets/bg_card_right.png) no-repeat;
+        background-size: 100%;
+        margin-left:px2rem(-12px);
+        padding:0 px2rem(15px);
+        .f_cardname{
+            font-size: px2rem(30px);
+            height: px2rem(60px);
+            line-height: px2rem(60px);
+            padding:0 px2rem(6px);
+            border-bottom: 1px solid #e3e3e3;
+            color: #333;
+        }
+        .f_cardinfo{
+            padding:px2rem(10px) px2rem(6px);
+            font-size: px2rem(26px);
+            line-height: px2rem(40px);
+            color: #666;
+        }
+    }
+    .m_LayerCardDetail{
+        width: px2rem(600px);
+        padding: px2rem(30px);
+        border-radius: px2rem(14px);
+        background: #FFF;
+        position: absolute;
+        // top: 50%;
+        // left: 50%;
+        // margin-left: px2rem(-300px);
+        // transform: translateY(-50%);
+        z-index: 550;
+    }
+    .m_LayerCardDetail{
+        .u_LayerTit{
+            font-size:px2rem(34px);
+            color:#303030;
+        }
+        .f_LayerClose{
+            background: url(../../../../assets/close.png) no-repeat;
+            background-size: 100% 100%;
+            width: px2rem(32px);
+            height: px2rem(32px);
+            position: absolute;
+            top: px2rem(30px);
+            right: px2rem(30px)
+        }
+        .f_CardImg{
+            width: 100%;
+            overflow: hidden;
+            margin-top: px2rem(30px);
+            img{
+                width: 100%;
+            }
+        }
+        .f_CardInfo{
+            width: 100%;
+            overflow: hidden;
+            font-size: px2rem(30px);
+            line-height: 1.4em;
+        }
+        .f_CardCol{
+            width: 100%;
+            padding: px2rem(10px) 0;
+            .f_ColLeft{
+                float: left;
+                color: #606060;
+                width: px2rem(130px);
+            }
+            .f_ColRight{
+                font-size: px2rem(28px);
+                width: px2rem(410px);
+                float: left;
+                color: #303030;
+                padding-left: px2rem(20px);
+            }
+        }
+        
+
+
+    }
+</style>
+
+
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .rankwarp{
+    .van-tab__pane{
+      margin-top:px2rem(120px);
+    }
+  }
+  
+</style>

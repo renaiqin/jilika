@@ -1,0 +1,201 @@
+<template>
+  <div class="selTeacherwarp">
+        <div class="m_selTeachHead">
+            <div class="searchbox">
+                <input type="text" v-model="searchVal" placeholder="输入姓名进行搜索" class="searchipt">
+                <em class="cleartext"></em>
+            </div>
+            <div class="searchconfirm" @click="releaseDynamic">搜索</div>
+            <div class="searchcancel" @click="cancel">取消</div>
+        </div>
+        <div v-if="infoList.length == 0" class="m_searchteacherMain">
+            <img src="../../../../assets/empty.png" class="emptyimg"/>
+            <p class="emptyText">换个名字试试吧~</p>
+        </div>
+        <div v-else class="m_searchteacherMain">
+            <ul>
+                <li v-for="(item,index) in infoList" v-on:click="choiceTeacher(item)">
+                    <!-- <div class="selState"></div> -->
+                    <div class="teachimg">
+                        <img :src="item.xbm == 2 ? '/static/img/gril.png' : '/static/img/boy.png'"/>
+                    </div> 
+                    <div class="teachname">{{item.xm}}</div>
+                </li>
+            </ul>
+        </div>
+         
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index";
+  export default {
+    name: "rankingHome",
+    data(){
+      return {
+          searchVal:"",
+          infoList:[],
+      }
+    },
+    mounted() {
+    },
+    methods: {
+        async releaseDynamic(){
+            let getTeacherList = await this.$fetch(api.getTeacherList(),{'xxdm':localStorage.getItem('xxdm'),groupid:'',text:this.searchVal});
+            this.infoList = getTeacherList.data;
+        },
+        choiceTeacher(item){
+            this.$store.dispatch("setChoiceTeacher",item);
+              //console.log(this.$store.getters.getChoiceTeacher,3333333333)
+            history.go(-2)
+            //this.$router.push({path:'/pages/student/dynamic/release'})
+           // setChoiceTeacher
+        },
+        cancel(){
+            this.searchVal = '';
+            history.go(-1)
+        }
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+        }
+    .selTeacherwarp{
+        height: 100%;
+        background: #FFF;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .m_selTeachHead{
+        width: 100%;
+        padding:px2rem(30px);
+        padding-bottom: 0;
+        float: left;
+    }
+    .searchbox{
+        height: px2rem(58px);
+        width: px2rem(490px);
+        margin-right: px2rem(20px);
+        background: #eff1f3;
+        border-radius: px2rem(29px);
+        font-size: px2rem(28px);
+        line-height: px2rem(58px);
+        padding:0 px2rem(40px);
+        text-align: center;
+        color: #8e8e8e;
+        position: relative;
+        float: left;
+        .cleartext{
+            width: px2rem(32px);
+            height: px2rem(32px);
+            background: url(../../../../assets/dot-cleartxt.png) no-repeat center;
+            background-size: 100% 100%;
+            position: absolute;
+            top: px2rem(13px);
+            right: px2rem(13px);
+        }
+        .searchipt{
+            background: transparent;
+            width: 100%;
+            height: px2rem(56px);
+            border: none;
+        }
+        .searchNone{
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .holder{
+            display: inline-block;
+            background: url(../../../../assets/dot_search.png) no-repeat left center;
+            background-size: auto 50%;
+            padding-left: px2rem(50px);
+        }
+    }
+    .searchconfirm{
+        float: left;
+        font-size: px2rem(34px);
+        color: #3e81ff;
+        line-height: px2rem(58px);
+        padding-left: px2rem(20px);
+    }
+    .searchcancel{
+        float: left;
+        font-size: px2rem(34px);
+        color: #3e81ff;
+        line-height: px2rem(58px);
+        padding-left: px2rem(20px);
+    }
+    .m_teacherMain{
+        flex: 1;
+        width: 100%;
+        overflow: auto;
+        background: #FFF;
+        padding-left: px2rem(30px);
+    }
+    .m_searchteacherMain{
+        padding-left:px2rem(30px);
+        min-height: px2rem(700px);
+        overflow-y: scroll;
+    }
+    .m_searchteacherMain li{
+        height: px2rem(120px);
+        padding:px2rem(20px) 0;
+        padding-right:px2rem(30px);
+        width: 100%;
+        border-bottom: 1px solid #eff1f3;
+        line-height: px2rem(120px);
+        .selState{
+            width: px2rem(75px);
+            height: px2rem(80px);
+            background: url(../../../../assets/dot_sel.png) no-repeat left center;
+            background-size: auto 55%;
+            float: left;
+        }
+        .teachimg{
+            width: px2rem(80px);
+            height: px2rem(80px);
+            border-radius:50%;
+            overflow: hidden;
+            float:left;
+            img{
+                width: 100%;
+                height: 100%;
+                display: block;
+            }
+        }
+        .teachname{
+            float: left;
+            height: px2rem(80px);
+            line-height: px2rem(80px);
+            font-size: px2rem(30px);
+            padding-left:px2rem(20px);
+            color: #000;
+            .department{
+                display: block;
+                font-size: px2rem(24px);
+                color: #606060;
+            }
+        }
+         
+    }
+     .emptyimg {
+        width: px2rem(700px);
+        margin: px2rem(230px) auto px2rem(30px) auto;
+    }
+    .emptyText {
+        color: #606266;
+        text-align: center;
+        font-size: px2rem(30px);
+    }
+</style>

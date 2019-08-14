@@ -1,0 +1,621 @@
+<template>
+  <div class="selectwarp">
+    <!-- 选择年级  班级  学生模块 -->
+    <div class="showType" v-if="showType == 1">
+      <van-search placeholder="请输入搜索关键词" @focus="searchfous" v-model="searchvalue" />
+      <div class="tabs clearfix">
+        <p :class="{'blue':isall}" @click="changelevels(1)">全部</p>
+        <van-icon name="arrow" v-if="type == 2 || type == 3"/>
+        <p :class="{'blue':isgrade}" v-if="type == 2 || type == 3" @click="changelevels(2)">{{gradeName}}</p>
+        <van-icon name="arrow" v-if="type == 3"/>
+        <p :class="{'blue':isclass}" v-if="type == 3" @click="changelevels(3)">{{className}}</p>
+      </div>
+
+
+      <!-- 年级模块 -->
+      <div v-if="type == 1">
+        <div class="selectTitle">
+          常用班级
+        </div>
+        <van-cell>
+          <template slot="title">
+            <van-checkbox v-model="checked">全选</van-checkbox>
+          </template>
+        </van-cell>
+        <van-cell>
+          <template slot="title">
+            <van-checkbox v-model="checked">一年级</van-checkbox>
+          </template>
+          <van-icon name="arrow" @click="chooseGrade()"/>
+        </van-cell>
+        <div class="selectTitle">
+          全部年级
+        </div>
+        <van-cell v-for="(item,index) in gradeList" :key="index">
+          <template slot="title">
+            <van-checkbox v-model="checked">{{item.njmc}}</van-checkbox>
+          </template>
+          <van-icon name="arrow" @click="chooseGrade()"/>
+        </van-cell>
+        
+      </div>
+      
+
+
+      <!-- 班级模块 -->
+      <div v-if="type == 2">
+        <van-cell>
+          <template slot="title">
+            <van-checkbox v-model="checked">全选</van-checkbox>
+          </template>
+        </van-cell>
+        <van-cell v-for="(item,index) in classList" :key="index">
+          <template slot="title">
+            <van-checkbox v-model="checked">{{item.bj}}</van-checkbox>
+          </template>
+          <van-icon name="arrow" @click="chooseClass(item.uuid)"/>
+        </van-cell>
+        <!-- <van-cell value="常用班级">
+          <template slot="title">
+            <van-checkbox v-model="checked">一年级</van-checkbox>
+          </template>
+        </van-cell> -->
+      </div>
+
+
+
+      <!-- 学生模块 -->
+      <div class="studentWarp" v-if="type == 3">
+        <van-cell>
+          <template slot="title">
+            <van-checkbox v-model="checked">全选</van-checkbox>
+          </template>
+        </van-cell>
+        <cube-index-list :data="cityData">
+          <cube-index-list-group
+            v-for="(group, index) in cityData"
+            :key="index"
+            :group="group">
+            <cube-index-list-item
+              v-for="(item, index) in group.items"
+              :key="index"
+              :item="item"
+              >
+              <div class="custom-item"><van-checkbox v-model="checked">{{item.name}}</van-checkbox></div>
+            </cube-index-list-item>
+          </cube-index-list-group>
+        </cube-index-list>
+      </div>
+
+
+      <!-- <div class="choosenum">
+        <p @click="checknum">已选{{choosenum}}人</p>
+        <p>完成</p>
+      </div> -->
+    </div>
+
+
+    <!-- 选择后展示所选学生页面 -->
+    <div class="showstudent" v-if="showType == 2">
+      <div class="showstudentTop">
+        <van-cell title="一年级一班">
+          <van-icon slot="right-icon" name="close" class="close" />
+        </van-cell>
+        <van-cell title="一年级一班">
+          <van-icon slot="right-icon" name="close" class="close" />
+        </van-cell>
+        <van-cell title="一年级一班">
+          <van-icon slot="right-icon" name="close" class="close" />
+        </van-cell>
+      </div>
+      <div class="grayline"></div>
+      <div class="showstudentBottom">
+        <van-cell>
+          <template slot="title">
+            <div class="viainfo clearfix">
+              <div class="via"></div>
+              <div class="name">
+                <p>周杰伦老师</p>
+                <p>2019-02-19</p>
+              </div>
+              <van-icon slot="right-icon" name="close" class="close" />
+            </div>
+            
+          </template>
+        </van-cell>
+
+        <van-cell>
+          <template slot="title">
+            <div class="viainfo clearfix">
+              <div class="via"></div>
+              <div class="name">
+                <p>周杰伦老师</p>
+                <p>2019-02-19</p>
+              </div>
+              <van-icon slot="right-icon" name="close" class="close" />
+            </div>
+            
+          </template>
+        </van-cell>
+      </div>
+      <div class="queding" @click="showchoose">确定</div>
+    </div>
+   
+
+
+
+    <!-- 搜索页面 -->
+    <div v-if="showType == 3">
+      <form action="/">
+        <van-search
+          v-model="studentvalue"
+          placeholder="请输入搜索关键词"
+          show-action
+          @search="onSearch"
+          @cancel="onCancel"
+        />
+      </form>
+
+      <van-cell  value="内容" >
+        <template slot="title">
+          <div class="viainfo clearfix">
+            <van-checkbox v-model="checked">
+              <div class="via"></div>
+              <div class="name">
+                <p>周杰伦老师</p>
+                <p>2019-02-19</p>
+              </div>
+            </van-checkbox>
+          </div>
+        </template>
+      </van-cell>
+
+     
+    </div>
+
+     <div class="choosenum">
+        <p @click="checknum">已选{{choosenum}}人</p>
+        <p @click="renderpostCard">完成</p>
+      </div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index"
+  
+export default {
+  name:'selectStudent',
+  data() {
+    return {
+      title: 'Current City: BEIJING',
+      cityData: [
+        {
+          "name": "A",
+          "items": [
+            {
+              "name": "ANSHAN",
+              "value": 3
+            },
+            {
+              "name": "ANQING",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "name": "G",
+          "items": [
+            {
+              "name": "郭富城",
+              "value": 3
+            },
+            {
+              "name": "郭沫若",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "name": "Z",
+          "items": [
+            {
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            },{
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "name": "M",
+          "items": [
+            {
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            },{
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "name": "N",
+          "items": [
+            {
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            },{
+              "name": "周杰伦",
+              "value": 3
+            },
+            {
+              "name": "周芷若",
+              "value": 4
+            }
+          ]
+        }
+      ],
+      searchvalue:'',//搜索值
+      gradeName:'一年级',//年级值
+      className:'5班',//班级值
+      isall:false,//是否点击全部
+      isgrade:false,//是否选择年级
+      isclass:false,//是否选择班级
+      checked:false,
+      type:1,//1 全部  2 年级  3  班级
+      choosenum:2,//已选人数
+      showType:1,//1 选择年级  班级  学生模块  2 选择后展示所选学生页面  3  搜索页面
+      studentvalue:'',//搜索页面   搜索的值
+      commClass:[],//常用班级
+      gradeList:[],//年级数组
+      classList:[],//班级数组
+      studentList:[],//学生列表
+    }
+  },
+  mounted() {
+    this.getCybjList();
+    this.selectNjList();
+    this.selectBjListByJbxn();
+  },
+  methods: {
+    selectItem(item) {
+      console.log(item.name)
+    },
+    clickTitle(title) {
+      console.log(title)
+    },
+    /**
+     * 点击title 切换面板
+     * type 1 全部  2 年级  3  班级
+     */
+    changelevels(type){
+      let that = this;
+      that.type = type;
+      switch (type) {
+        case 1://全部
+          that.isall = true;
+          that.isgrade = false;
+          that.isclass = false;
+          break;
+        case 2://年级
+          that.isall = true;
+          that.isgrade = false;
+          that.isclass = false;
+          break;
+        case 3://班级
+          that.isall = true;
+          that.isgrade = true;
+          that.isclass = true;
+          break;
+        default:
+          break;
+      }
+    },
+    /** 
+     * 全部面板里选择年级
+    */
+    chooseGrade(){
+      this.type = 2;
+      this.isall = true;
+      this.isgrade = false;
+      this.isclass = false;
+    },
+    /** 
+     * 年级面板里选择班级
+    */
+    chooseClass(bjid){
+      this.type = 3;
+      this.isall = true;
+      this.isgrade = true;
+      this.isclass = false;
+      this.gettBjxsAll(bjid);
+    },
+    /** 
+     * 点击已选人数跳转到查看已选页面
+     * */  
+    checknum(){
+      this.showType = 2;
+    },
+    /** 
+     * 点击搜索
+    */
+    onSearch(){
+
+    },
+    /** 
+     * 点击取消
+    */
+    onCancel(){
+
+    },
+    /** 
+     * 返回选择学生页面
+    */
+    showchoose(){
+      this.showType = 1;
+    },
+    /** 
+     * 选择学生页面点击搜索
+    */
+    searchfous(){
+      console.log(55555555555555);
+      this.showType = 3;
+    },
+    /**
+     * @description: 获取常用班级
+     * @param {type} 
+     * @return: 
+     */
+    getCybjList(){
+      this.$fetch(api.getCybjList(), {zgh: localStorage.getItem('zgh'),xxdm:localStorage.getItem('xxdm'),xndm:localStorage.getItem('xn')}).then(res=>{
+        console.log(res)
+      });
+    },
+    /**
+     * @description: 获取年级
+     * @param {type} 
+     * @return: 
+     */
+    selectNjList(){
+      this.$fetch(api.selectNjList(), {xxdm:localStorage.getItem('xxdm')}).then(res=>{
+        this.gradeList = res
+      });
+    },
+    selectBjListByJbxn(){
+      this.$fetch(api.selectBjListByJbxn(), {xxdm:localStorage.getItem('xxdm'),xn:localStorage.getItem('xn')}).then(res=>{
+        console.log(res)
+        this.classList = res
+      });
+    },
+    gettBjxsAll(bjid){
+      this.$fetch(api.gettBjxsAll(), {xxdm:localStorage.getItem('xxdm'),xn:localStorage.getItem('xn'),bjid:bjid}).then(res=>{
+        console.log(res)
+        this.studentList = res
+      });
+    },
+    /**
+     * @description: 跳转到发卡
+     * @param {type} 
+     * @return: 
+     */
+    renderpostCard(){
+      this.$router.push({path:'/pages/teacher/cardRecord/postCard'});
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+  }
+  .blue{
+    color:#3e81ff;
+  }
+  .selectwarp{
+    width: 100%;
+    height: 100%;
+    .showType{
+      height: 100%;
+    }
+    .tabs{
+      margin-top: px2rem(7px);
+      padding:px2rem(33px);
+      p{
+        font-size: px2rem(36px);
+        font-weight: 600;
+        float: left;
+        margin-right: px2rem(10px);
+      }
+      .van-icon{
+        font-size: px2rem(30px);
+         float: left;
+         margin-right: px2rem(10px);
+      }
+    }
+    .selectTitle{
+      height: px2rem(80px);
+      background-color: #F0F3F8;
+      line-height: px2rem(80px);
+      font-size: px2rem(26px);
+      color: #606266;
+      padding-left: px2rem(30px);
+    }
+    .studentWarp{
+      height: 100%;
+    }
+    .choosenum{
+      width: 100%;
+      height: px2rem(100px);
+      background-color: #fff;
+      position: fixed;
+      left: 0;
+      bottom:0;
+      z-index: 99;
+      font-size:px2rem(30px);
+      p:nth-child(1){
+        color: #3e81ff;
+        float: left;
+        height: px2rem(100px);
+        line-height: px2rem(70px);
+        padding-left: px2rem(30px);
+      }
+      p:nth-child(2){
+        color: #fff;
+        background-color: #3e81ff;
+        width: px2rem(150px);
+        float: right;
+        height: px2rem(70px);
+        line-height: px2rem(70px);
+        margin-right: px2rem(30px);
+        border-radius: px2rem(40px);
+        text-align: center;
+      }
+    }
+    .showstudentBottom{
+      .van-cell{
+        height: px2rem(120px);
+        font-size:px2rem(32px);
+        color:#333;
+      }
+    }
+    .viainfo{
+      .via{
+        width: px2rem(80px);
+        height: px2rem(80px);
+        border-radius: 50%;
+        background-color: #909399;
+      }
+      .via,.name{
+        float: left;
+      }
+      .name{
+        margin-left: px2rem(30px);
+        p:nth-child(1){
+          color:#303133;
+          font-size: px2rem(29px);
+          
+        }
+        p:nth-child(2){
+          color:#909399;
+          font-size: px2rem(18px);
+          
+        }
+      }
+      .close{
+        float: right;
+        line-height: px2rem(90px);
+      }
+    }
+    .grayline{
+      height: px2rem(20px);
+      background-color: #eff1f3;
+    }
+    .queding{
+      width: px2rem(642px);
+      height: px2rem(88px);
+      background-color: #3e81ff;
+      border-radius: px2rem(50px);
+      position: fixed;
+      left: px2rem(60px);
+      bottom:px2rem(30px);
+      color:#fff;
+      font-size: px2rem(34px);
+      text-align: center;
+      line-height: px2rem(88px);
+    }
+  }
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .selectwarp{
+    position: relative;
+    .van-search{
+      background: rgb(255, 255, 255) !important;
+      .van-cell{
+        background-color:#f0f3f8;
+      }
+      .van-search .van-cell{
+        border-radius:px2rem(30px);
+      }
+      .van-cell,.van-cell--borderless,.van-field{
+        border-radius:px2rem(30px);
+      }
+    }
+  }
+  .showstudent{
+    background-color:#eff1f3;
+    height: 100%;
+    .showstudentTop{
+      .van-cell{
+        height: px2rem(120px);
+        font-size:px2rem(32px);
+        color:#333;
+        line-height: px2rem(90px);
+        .close{
+          font-size:px2rem(32px);
+          color:#333;
+          line-height: px2rem(90px);
+        }
+        .van-cell__title{
+          height: px2rem(10px);
+          line-height: px2rem(90px);
+        }
+      }
+    }
+  }
+  .studentWarp{
+    .van-checkbox__label{
+      font-size:px2rem(30px);
+    }
+    .cube-index-list{
+      .van-checkbox{
+        margin-left: px2rem(30px);
+        width: 80%;
+        height: px2rem(100px);
+        .van-checkbox__label{
+          line-height:px2rem(100px);
+        }
+        .van-checkbox__icon, .van-checkbox__label{
+          line-height:px2rem(40px);
+        }
+      }
+      .cube-index-list-nav > ul > li.active{
+        color: #3e81ff;
+      }
+      .cube-index-list-nav{
+        top:30%;
+      }
+      .cube-index-list-anchor{
+        height: px2rem(30px);
+        line-height: px2rem(30px);
+        padding:px2rem(14px) px2rem(24px) px2rem(44px) px2rem(33px);
+      }
+    }
+    .cube-index-list-content{
+      padding-bottom:px2rem(200px);
+    }
+  }
+</style>

@@ -1,0 +1,426 @@
+<template>
+  <div class="cardwarp">
+
+        <div class="m_cardTabBox">
+            <ul>
+                <li class="m_cardTab on" v-on:click="changeXnXq">
+                    <span>{{xnxqstr}}</span>
+                </li>
+                <li class="m_cardTab" v-on:click="showChart">
+                    <span>获卡走势图</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="m_cardMain">
+                <div class="f_cardTypeTit">
+                    普通卡
+                </div>
+                <div class="f_cardList">
+                    <ul>
+
+                        <li v-for="item in stuCardList.normalCard" v-on:click="item.value == 0 ? '' : detailCard(item.kplx,xnxq.xq,xnxq.xn)">
+                            <div class="f_cardBox">
+                                <div class="f_cardImg">
+                                    <img :src="'http://115.231.105.146/'+(item.imgPath?item.imgPath:'/static/img/test1.png')">
+                                </div>
+                                <div class="f_cardName">
+                                    {{item.name}}
+                                    <div class="f_cardNum">{{item.value}}张</div>
+                                </div>
+                            </div>
+                        </li>
+
+                    </ul>
+                </div>
+
+                <div v-for="item in advStuCardList">
+                    <div class="f_cardTypeTit">
+                        {{num2word(item.key)}}级卡
+                    </div>
+                    <div class="f_cardList">
+                        <ul>
+                            <!-- v-on:click="detailCard(sitem.kplx,xnxq.xq,xnxq.xn)" -->
+                            <li v-for="sitem in item.value" >
+                                <div class="f_cardBox">
+                                    <div class="f_cardImg">
+                                        <img :src="'http://115.231.105.146/'+(sitem.tplj?sitem.tplj:'static/img/test1.png')">
+                                    </div>
+                                    <div class="f_cardName">
+                                        <p>{{sitem.kpmc}}({{sitem.djbc}})></p>
+                                        <div class="f_cardNum">{{sitem.cnt}}张</div>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+
+        </div>
+        <transition name="upinto">
+        <van-picker v-if="isChangeXnXq" show-toolbar title="选择学年学期" :columns="xnxqlist" @cancel="onCancel"
+  @confirm="onConfirm" class="f_grade_picker"/>
+        </transition>
+        <div class="mask" v-if="isMask"></div>
+
+  </div>
+</template>
+
+<script>
+  import _ from 'lodash';
+  import { api } from "../../../../utils/Api/index";
+  export default {
+    name: "cardsList",
+    data(){
+        return {
+            //xnxqlista:["1",'2'],
+            xnxqlist: [],           //学年学期列表
+            xnxqstr:"",             //学年学期文字显示
+
+
+            stuCardList:{},         //学生当前卡片列表
+            advStuCardList:[],      //特殊高级卡片列表
+
+            isChangeXnXq:false,     //是否显示学年学期选择弹层
+            isMask:false,           //是否显示遮罩层
+            xnxq:{                  //当前学年学期值
+                xn:"",
+                xq:""
+            },
+        
+
+        }
+    },
+    mounted() {
+        this.init();
+        
+    },
+    components:{    //这里是注册你所需要的组件的地方 上面import进来,这里注册
+    
+    },
+    methods: {
+        /**
+         * 说明:初始化获卡的数据
+         * 作者:RayJ
+         * 更新时间:2019-03-04
+         */
+        async init(){
+            //获取当前的学年学期
+            var parmaobj = {
+                xxdm:localStorage.getItem('xxdm')
+            }
+            var {data} = await this.$fetch(api.getCurrentXnxq(),parmaobj);
+            //console.log(data);
+            this.xnxq.xn = data.xn;
+            this.xnxq.xq = data.xq;
+            this.xnxqstr = data.xn + data.xqmc;
+
+            //获取学年学期列表
+            var {data} = await this.$fetch(api.getXnxqList(),parmaobj);
+            this.xnxqlist =  this.formatXnxq(data);
+            //console.log(this.xnxqlist);
+
+            //获取当前学年学期学生获得的卡片的数据
+            var parmaobj = {
+                xxdm:localStorage.getItem('xxdm'),
+                xndm:this.xnxq.xn,
+                xqdm:this.xnxq.xq,
+                xh:localStorage.getItem('xh')
+            };
+            var {data} = await this.$fetch(api.getCardInfoByXh(),parmaobj);
+            this.stuCardList = data;
+            console.log(this.stuCardList);
+            this.advStuCardList = this.formatAdvCard(data.advancedCard);
+            
+
+
+
+        },
+        /**
+         * 说明:更换学年学期,重新读取数据
+         * 作者:RayJ
+         * 更新时间:2019-03-04
+         */
+        changeXnXq(){
+            this.isMask = true;
+            this.isChangeXnXq = true;
+        },
+        /**
+         * 说明:整理学年学期列表数据
+         * 作者:RayJ
+         * 更新时间:2019-03-04
+         */
+        formatXnxq(arrxnxq){
+            var xnxqlist = [];
+            for(var i=0;i<arrxnxq.length;i++){
+                var xnxqobj = {};
+                xnxqobj.text = arrxnxq[i].xndm + " " + (arrxnxq[i].xqdm=="01"?"上学期":"下学期");
+                xnxqobj.value = {};
+                xnxqobj.value.xn = arrxnxq[i].xndm;
+                xnxqobj.value.xq = arrxnxq[i].xqdm;
+                xnxqlist.push(xnxqobj);
+            }
+            return xnxqlist
+        },
+        /**
+         * 说明:整理高级卡片
+         * 作者:RayJ
+         * 更新时间:2019-03-04
+         */
+        formatAdvCard(arrCardList){
+            // var test = [
+            //     {"value":[{"xh":"30170115145913001","kplx":"1","tpmc":"高级卡1","kpmc":"卡1","cnt":"2","djbc":"黄金","dj":"1"}],"key":"1"},
+            //     {"value":[{"xh":"30170115145913001","kplx":"1","tpmc":"高级卡1","kpmc":"卡1","cnt":"2","djbc":"黄金","dj":"1"}],"key":"3"},
+            //     {"value":[{"xh":"30170115145913001","kplx":"1","tpmc":"高级卡1","kpmc":"卡1","cnt":"2","djbc":"黄金","dj":"1"}],"key":"2"}
+            // ]
+            var advCards = _.sortBy(arrCardList, ['key']);
+            return advCards
+        },
+        /**
+         * 说明:点击进入详细卡片列表
+         * 作者:RayJ
+         * 更新时间:2019-03-04 
+         */
+        detailCard(lx,xq,xn){
+            this.$router.push({path: '/pages/student/cardsList/myCardsRecord', query: {kplx:lx}})
+        },
+        /**
+         * 说明:阿拉伯数字转汉字数字
+         * 作者:RayJ
+         * 更新时间:2019-03-04 
+         */
+        num2word(num){
+            switch (num){
+            case "1":
+                return "一"
+                break;
+            case "2":
+                return "二"
+                break;
+            case "3":
+                return "三"
+                break;
+            case "4":
+                return "四"
+                break;
+            case "5":
+                return "五"
+                break;
+            case "6":
+                return "六"
+                break;
+            case "7":
+                return "七"
+                break;
+            case "8":
+                return "八"
+                break;
+            case "9":
+                return "九"
+                break;
+            case "10":
+                return "十"
+                break;
+            }
+        },
+        /**
+         * 说明:跳转到图标页面
+         * 作者:RayJ
+         * 更新时间:2019-03-05 
+         */
+        showChart(){
+            this.$router.push({path: '/pages/student/cardsList/cardsChart', query:{xn:this.xnxq.xn,xq:this.xnxq.xq}})
+        },
+        onCancel(){
+            this.isMask = false;
+            this.isChangeXnXq = false;
+        },
+        onConfirm(value,event){
+            this.isMask = false;
+            this.isChangeXnXq = false;
+            //赋值显示的文字
+            this.xnxqstr = value.text;
+            //赋值xnxq真实值
+            this.xnxq.xn = value.value.xn;
+            this.xnxq.xq = value.value.xq;
+
+
+            console.log(this.xnxq);
+        },
+        
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+    .upinto-enter-active{
+        animation-name:fadeInUp;animation-duration:.5s;
+    }
+    .cardwarp{
+        background: #eeeff3;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .m_cardTabBox{
+        width: 100%;
+        height: px2rem(108px);
+        background: #FFF;
+        border-bottom: 1px solid #cbcbcf;
+        padding: px2rem(23px);
+        .m_cardTab{
+            height: px2rem(64px);
+            border: px2rem(2px) solid #3e81ff;
+            border-radius: px2rem(7px);
+            width: 50%;
+            float: left;
+            text-align: center;
+            font-size: px2rem(26px);
+            span{
+                display: inline-block;
+                height: px2rem(64px);
+                line-height: px2rem(64px);
+            }
+        }
+        .m_cardTab:first-child{
+            border-radius: px2rem(7px) 0 0 px2rem(7px);
+            span{
+                background: url(../../../../assets/dot-card.png) no-repeat left center;
+                background-size: auto 50%;
+                padding-left: px2rem(45px);
+            }
+        }
+        .m_cardTab:last-child{
+            border-radius: 0 px2rem(7px) px2rem(7px) 0;
+            span{
+                color: #3e81ff;
+                background: url(../../../../assets/dot-chart.png) no-repeat left center;
+                background-size: auto 50%;
+                padding-left: px2rem(45px);
+            }
+        }
+        .m_cardTab.on{
+            background: #3e81ff;
+            color: #FFF;
+        }
+
+    }
+    .m_cardMain{
+        padding: 0 px2rem(10px) px2rem(20px) px2rem(10px);
+        width: 100%;
+        float: left;
+        flex: 1;
+        overflow: auto;
+        
+        .f_cardTypeTit{
+            margin-left:px2rem(10px);
+            margin-top: px2rem(30px);
+            color: #303133;
+            font-weight: 700;
+            font-size: px2rem(30px);
+            padding-left: px2rem(24px);
+            position: relative;
+            float: left;
+            width: 100%;
+        }
+        .f_cardTypeTit:after{
+            content: '\20';
+            position: absolute;
+            height:px2rem(30px);
+            width: px2rem(6px);
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #3e81ff;
+        }
+        .f_cardList{
+            float: left;
+            width: 100%;
+            padding-right:px2rem(10px);
+            li{
+                width: 50%;
+                height: px2rem(228px);
+                float: left;
+                padding-left: px2rem(10px);
+                margin-top: px2rem(20px);
+                border-radius: px2rem(5px);
+                overflow: hidden;
+                .f_cardBox{
+                    width: 100%;
+                    height: 100%;                    
+                    .f_cardImg{
+                        width: 100%;
+                        height: px2rem(160px);
+                        position: relative;
+                        z-index: 1;
+                        img{
+                            width: 100%;
+                            height: 100%;
+                        }
+                    }
+                    .f_cardName{
+                        width: 100%;
+                        padding:0 px2rem(15px);
+                        height: px2rem(70px);
+                        background: url(../../../../assets/card_bot.png) no-repeat left center;
+                        background-size: 100%;
+                        margin-top: px2rem(-4px);
+                        font-size: px2rem(26px);
+                        color: #606266;
+                        line-height: px2rem(70px);
+                        position: relative;
+                        z-index: 2;
+                       p{
+                            width: 90%;
+                            white-space:nowrap; 
+                            overflow: hidden;
+                            text-overflow:ellipsis;
+                            // span{
+                            //     float: left;
+                            // }
+                            // .name{
+                            //     white-space:nowrap; 
+                            //     overflow: hidden;
+                            //     text-overflow:ellipsis;
+                            //     width: px2rem(150px);
+                            //     display: inline-block;
+                            // }
+                            
+                       }
+                        .f_cardNum{
+                            color: #303133;
+                            font-size: px2rem(28px);
+                            position: absolute;
+                            right: px2rem(15px);
+                            top: 0;
+                            font-weight: 700;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    .f_grade_picker{
+        z-index: 550;
+    }
+</style>
+
+
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .rankwarp{
+    .van-tab__pane{
+      margin-top:px2rem(120px);
+    }
+  }
+  
+</style>

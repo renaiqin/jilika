@@ -1,0 +1,359 @@
+<template>
+  <div class="postcardwarp">
+    <van-cell-group>
+      <div class="selStudent">
+        <div class="label">
+          <span>*</span> 选择学生
+        </div>
+        <div class="value">{{studentVal}}</div>
+      </div>
+      <div class="selStudent noline">
+        <div class="label">
+          <span>*</span> 卡片类型
+        </div>
+        <div class="value">{{cardVal}}</div>
+      </div>
+      <!-- <van-field
+        class="selStudent"
+        v-model="studentVal"
+        required
+        clearable
+        label="选择学生"
+        right-icon="arrow"
+        placeholder=""
+        readonly
+        is-link
+        @click="renderSelectStudent"
+      />-->
+      <!-- <van-field
+        v-model="cardVal"
+        type="password"
+        label="卡片类型"
+        placeholder=""
+        required
+        readonly
+      />-->
+    </van-cell-group>
+
+    <div class="imgmain clearfix">
+      <!-- <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+        <div>
+          <div>
+            <van-icon name="success"/>
+          </div>
+        </div>
+      </div>-->
+      <div
+        @click="postCard(item)"
+        class="activeimg"
+        :class="{'check':item.isCheck}"
+        v-for="(item,index) in cardList"
+        :key="index"
+      >
+        <!-- <img @click="selectCard" :src="item.tplj?item.tplj:'/static/img/test1.png'"/> -->
+        <img @click="selectCard" :src="item.tplj">
+        <p class="cardNum">剩余{{item.kpsl}}张</p>
+      </div>
+    </div>
+    <div @click="save" class="save">下一步</div>
+
+    <transition name="flod">
+      <component v-show="isSelectStudent" :is="currentView" @submitSelect="submitSelect"></component>
+    </transition>
+  </div>
+</template>
+
+<script>
+import { api } from "../../../../utils/Api/index";
+import comp_SelectStudent from "../../commons/selectStudent.vue";
+export default {
+  name: "postCard",
+  data() {
+    return {
+      cardVal: "", //选择卡片的值
+      studentVal: "", //所选学生的值
+      cardList: [], //卡片类型数组
+      studentList: [],
+      currentView: "", //子组件的名称
+      isSelectStudent: false,
+      selfObj: "", //登录帐号对象
+      iskpfx: 0,
+      kpid: "" //选择的卡片id
+    };
+  },
+  components: {
+    comp_SelectStudent
+  },
+  mounted() {
+    this.selfObj = JSON.parse(localStorage.getItem("loginObj"));
+    this.studentVal = this.selfObj.name;
+    // console.log()
+    // console.log(this.$store.getters.getSelectStudent,58);
+
+    //this.studentVal = this.getStudentVal(this.$store.getters.getSelectStudent);
+
+    this.getKplxByCountList();
+
+    // this.getUserInfo();
+    // this.getStudentVal();
+  },
+
+  methods: {
+    /**
+     * 说明:格式化已选中的学生,字符串的形式显示
+     * 作者:RayJ
+     * 更新时间:2019-03-09
+     */
+    getStudentVal(itemList) {
+      var sval = "";
+      for (var i = 0; i < itemList.length; i++) {
+        sval = sval + itemList[i].name + ",";
+      }
+      return sval;
+    },
+    /**
+     * @description: 点击选择学生跳转到选择学生界面
+     * @param {type}
+     * @return:
+     */
+    renderSelectStudent() {
+      this.currentView = "comp_SelectStudent";
+      this.isSelectStudent = true;
+      // this.$router.push({path:'/pages/teacher/cardRecord/selectStudent',query:{}});
+    },
+    /**
+     * 说明:子组件提交了选择学生
+     * 作者:RayJ
+     * 更新时间:2019-03-23
+     */
+    submitSelect() {
+      this.isSelectStudent = false;
+      this.currentView = "";
+      //获取全选班级，年级，单个选择后转换成统一数组对象
+      // this.formatAllStudentList();
+      // //获取已经选取的学生名字,年级,班级
+      this.getStudentVal();
+      // console.log(this.studentVal);
+    },
+    /**
+     * @description: 点击保存跳转到发卡详情
+     * @param {type}
+     * @return:
+     */
+    save() {
+      if (this.studentVal == "") {
+        this.$toast("学生不能为空！");
+        return;
+      }
+      if (this.cardVal == "") {
+        this.$toast("卡片类型不能为空！");
+        return;
+      }
+      this.$router.push({
+        path: "/pages/student/cardsList/cardDetail",
+        query: { iskpfx: this.iskpfx, cardId: this.kpid }
+      });
+    },
+    /**
+     * @description: 选中卡片
+     * @param {type}
+     * @return:
+     */
+    selectCard() {},
+    /**
+     * @description:
+     * @param {type}
+     * @return:
+     */
+    async getKplxByCountList() {
+      let { data } = await this.$fetch(api.getKplxByCountList(), {
+        ckr: localStorage.getItem("xh"),
+        ckrlx: localStorage.getItem("usertype") == "3" ? "ls" : "jz",
+        xxdm: localStorage.getItem("xxdm"),
+        dqxn: localStorage.getItem("xn"),
+        dqxq: localStorage.getItem("xq")
+      });
+      this.cardList = data;
+    },
+    postCard(item) {
+      this.iskpfx = item.iskpfx;
+
+      if (item.kpsl == 0) {
+        this.$toast("卡片数量不足，需后台设置后才能发卡！");
+        return;
+      }
+      for (var i = 0; i < this.cardList.length; i++) {
+        // this.cardList.isCheck = false
+        this.$set(this.cardList[i], "isCheck", false);
+      }
+      this.cardVal = item.kpmc;
+      this.$set(item, "isCheck", true);
+      this.$store.dispatch("setSelectCard", item);
+      this.kpid = item.kpid;
+      //console.log(this.$store.getters.getSelectCard,105);
+    },
+    /**
+     * 说明:格式化已选中的学生,字符串的形式显示
+     * 作者:RayJ
+     * 更新时间:2019-03-09
+     */
+    getStudentVal() {
+      let itemList = this.$store.getters.getSelectStudent;
+      let classList = this.$store.getters.getSelectAllClass;
+      let gradeList = this.$store.getters.getSelectAllGrade;
+      // console.log(itemList,classList,gradeList);
+      var sval = "";
+      for (var i = 0; i < classList.length; i++) {
+        sval = sval + classList[i].bj + ",";
+      }
+      for (var i = 0; i < gradeList.length; i++) {
+        sval = sval + gradeList[i].njmc + ",";
+      }
+      for (var i = 0; i < itemList.length; i++) {
+        sval = sval + itemList[i].xm + ",";
+      }
+      // console.log(sval);
+      this.studentVal = sval;
+    }
+  }
+};
+</script>
+
+<style scoped lang="scss">
+@import "../../../../style/style.scss";
+body {
+  background-color: #fff !important;
+  position: relative;
+}
+.flod-enter-active {
+  animation-name: fadeInRight;
+  animation-duration: 0.5s;
+}
+.postcardwarp {
+  width: 95%;
+  height: 100%;
+  margin: 0 auto;
+  .imgmain {
+    width: 100%;
+    margin: 0 auto;
+    padding-top: px2rem(20px);
+    .activeimg {
+      height: px2rem(150px);
+      width: 42%;
+      margin: 2%;
+      float: left;
+      position: relative;
+      border-radius: px2rem(20px);
+      overflow: hidden;
+      img {
+        width: 100%;
+        border-radius: px2rem(20px);
+        height: 100%;
+        display: block;
+      }
+      div {
+        width: 100%;
+        height: px2rem(150px);
+        border-radius: px2rem(20px);
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: block;
+        div {
+          width: px2rem(50px);
+          height: px2rem(50px);
+          background-color: #3e81ff;
+          border-radius: px2rem(50px);
+          margin: px2rem(56px) 43%;
+          .van-icon {
+            color: #fff;
+            font-size: px2rem(30px);
+            display: block;
+            margin: 0 auto;
+            line-height: px2rem(50px);
+            text-align: center;
+            z-index: 1;
+          }
+        }
+      }
+      .cardNum {
+        position: absolute;
+        bottom: px2rem(30px);
+        right: px2rem(20px);
+        font-size: px2rem(26px);
+        padding: px2rem(10px) px2rem(15px);
+        background: rgba($color: #ffffff, $alpha: 0.7);
+        border-radius: px2rem(10px);
+      }
+    }
+    .activeimg.check::after {
+      content: "\20";
+      width: 100%;
+      height: 100%;
+      background: rgba($color: #000000, $alpha: 0.4);
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    .activeimg.check::before {
+      content: "\20";
+      width: 100%;
+      height: 100%;
+      background: url(../../../../assets/dot_sel_cur.png) no-repeat center;
+      background-size: auto 50%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+    }
+  }
+  .save {
+    width: px2rem(642px);
+    height: px2rem(88px);
+    margin: px2rem(30px) auto;
+    background-color: #3e81ff;
+    color: #fff;
+    text-align: center;
+    line-height: px2rem(88px);
+    border-radius: px2rem(40px);
+    font-size: px2rem(34px);
+    position: absolute;
+    bottom: px2rem(30px);
+    left: px2rem(55px);
+  }
+}
+.selStudent {
+  height: px2rem(80px);
+  line-height: px2rem(80px);
+  font-size: px2rem(30px);
+  border-bottom: 1px solid #f6f6f6;
+  .label {
+    float: left;
+    span {
+      color: #ff3030;
+    }
+  }
+  .value {
+    float: right;
+    text-align: right;
+    height: px2rem(80px);
+    width: px2rem(500px);
+    margin-right: px2rem(20px);
+    padding-right: px2rem(40px);
+    color: #999;
+  }
+  .value.arrow-right {
+    background: url(../../../../assets/arrow_right.png) no-repeat center right;
+    background-size: auto 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+</style>
+<style lang="scss">
+@import "../../../../style/style.scss";
+</style>

@@ -1,0 +1,158 @@
+<template>
+  <div class="selTeacherwarp">
+        <div class="m_selTeachHead">
+            <div class="searchbox">
+                <input type="text" class="searchipt">
+                <div class="searchNone"><div class="holder">搜索</div></div>
+            </div>
+        </div>
+        <div class="m_selTeachBody">
+            <div class="u_selAllText">全部</div>
+        </div>
+        <div class="m_selLineTab">所有部门</div>
+        <div class="m_departmentMain">
+            <ul>
+                <li v-for="(item,index) in departmentList" v-on:click="selDepartment(item)">
+                    <div class="u_department_col">{{item.name}}</div>
+                </li>
+            </ul>
+        </div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index";
+  export default {
+    name: "rankingHome",
+    data(){
+      return {
+          departmentList:[],
+      }
+    },
+    mounted() {
+        this.init();
+    },
+    methods: {
+        /**
+         * 说明:初始化基础数据
+         * 作者:RayJ
+         * 更新时间:2019-03-12
+         */
+        async init(){
+            this.departmentList = this.$store.getters.getDepartment;
+            //this.$store.getters.getDepartment
+            //console.log(3333333333333333333)
+
+            //console.log(this.$store.getters.getDepartment)
+        },
+        async selDepartment(item){
+            //保存当前选择的部门到vuex中
+            this.$store.dispatch("setChoiceDepartment",item);
+            //根据部门获取老师
+           // console.log(77777777777777)
+           
+            let getTeacherList = await this.$fetch(api.getTeacherList(),{'xxdm':localStorage.getItem('xxdm'),groupid:item.id,text:''});
+           // console.log(getTeacherList)
+            this.$store.dispatch("setAllTeacher",getTeacherList.data);
+            //console.log()
+            this.$router.push({path:'/pages/student/dynamic/selteacher',query: {departId:item.id}})
+        },
+
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+        }
+    .selTeacherwarp{
+        height: 100%;
+        background: #FFF;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .searchbox{
+        height: px2rem(58px);
+        width: 100%;
+        background: #eff1f3;
+        border-radius: px2rem(29px);
+        font-size: px2rem(28px);
+        line-height: px2rem(58px);
+        padding:0 px2rem(40px);
+        text-align: center;
+        color: #8e8e8e;
+        position: relative;
+        .searchipt{
+            background: transparent;
+            width: 100%;
+            height: px2rem(56px);
+        }
+        .searchNone{
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .holder{
+            display: inline-block;
+            background: url(../../../../assets/dot_search.png) no-repeat left center;
+            background-size: auto 50%;
+            padding-left: px2rem(50px);
+        }
+    }
+    .m_selTeachHead{
+        width: 100%;
+        padding:px2rem(30px);
+        float: left;
+    }
+    .m_selTeachBody{
+        float: left;
+        .u_selAllText{
+            font-size: px2rem(32px);
+            color: #333;
+            width: 100%;
+            padding: px2rem(30px);
+            padding-top: 0;
+        }
+    }
+    .m_selLineTab{
+        font-size: px2rem(26px);
+        width: 100%;
+        height: px2rem(80px);
+        background: #f0f3f8;
+        padding: 0 px2rem(30px);
+        line-height: px2rem(80px);
+        color: #606060;
+    }
+    .m_departmentMain{
+        flex: 1;
+        width: 100%;
+        overflow: auto;
+        background: #FFF;
+        padding-left: px2rem(30px);
+    }
+    .m_departmentMain li{
+        height: px2rem(120px);
+        padding-right:px2rem(30px);
+        width: 100%;
+        border-bottom: 1px solid #eff1f3;
+        line-height: px2rem(120px);
+        .u_department_col{
+            font-size: px2rem(32px);
+            color:#333;
+            width: 100%;
+            height: px2rem(120px);
+            background: url(../../../../assets/arrow_right.png) no-repeat right center;
+            background-size: auto 30%;
+        }
+    }
+    
+
+</style>

@@ -1,0 +1,58 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+    {
+      path: "/",
+      redirect: '/pages/teacher/home'
+    },
+    {
+      path: "/pages/teacher/home",
+      name: "home",
+      component: () =>
+        import("../views/pages/teacher/home.vue")
+    },
+    {
+      path: "/pages/teacher/setClass",
+      name: "setClass",
+      component: () =>
+        import("../views/pages/teacher/setClass.vue")
+    },
+    {
+      path: "/pages/teacher/cardRecord/selectStudent",
+      name: "selectStudent",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/selectStudent.vue")
+    }, 
+    {
+      path: "/pages/teacher/cardRecord/cardRecord",
+      name: "cardRecord",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/cardRecord.vue")
+    }, {
+      path: "/pages/teacher/cardRecord/postCard",
+      name: "postCard",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/postCard.vue")
+    }, {
+      path: "/pages/teacher/cardRecord/cardDetail",
+      name: "cardDetail",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/cardDetail.vue")
+    }, {
+      path: "/pages/teacher/cardRecord/selectCard",
+      name: "selectCard",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/selectCard.vue")
+    }, {
+      path: "/pages/teacher/rankingList/rankingHome",
+      name: "rankingHome",
+      component: () =>
+        import("../views/pages/teacher/rankingList/rankingHome.vue")
+    }
+  ]
+})
+

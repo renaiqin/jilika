@@ -1,0 +1,875 @@
+<template>
+  <div class="cardDetail">
+    <div class="detailtop">
+        <img :src="'http://115.231.105.146/'+cardItem.tplj" />
+        <p>剩余：{{cardItem.kpsl}}张</p>
+    </div>
+    <div v-if="!isGiveCard" @click="changecard" class="changecard">切换卡片</div>
+    <div class="grayline"></div>
+
+    <div class="write">
+        <div v-if="iskpfx">
+          <van-cell-group v-if="actions.length > 0">
+              <van-field v-model="actionsheetVal" required clearable label="考评分项" placeholder=""  readonly @click="changekpfx">
+              <van-p slot="p" size="small" type="primary">{{actionsheetVal}}</van-p>
+              </van-field>
+          </van-cell-group>
+        </div>
+        <van-actionsheet
+            v-model="showkpfx"
+            :actions="actions"
+            cancel-text="取消"
+            @select="onSelectkpfx"
+            @cancel="onCancelkpfx"
+        />
+        <van-field
+            required
+            clearable
+            label="写评语"
+            placeholder="请选择下方评语，可编辑"
+            readonly
+        />
+        <div class="pinyu">
+            <span :class="{'active':item.check}" v-for="(item,index) in PyList" @click="SelectPy(item)">{{item.pynr}}</span>
+        </div>
+        <textarea v-model="pyText" class="pinyutext"></textarea>
+    </div>
+
+    <div class="grayline"></div>
+    <van-cell title="发卡时间" is-link @click="changetime" :value="currentDateVal" />
+    <van-datetime-picker class="datetimepicker"
+      v-model="currentDate"
+      type="date"
+      :min-date="minDate"
+      :max-date="maxDate"
+      v-show="showtime"
+      @confirm="confirmTime"
+      @cancel="cancelTime"
+      :visible-item-count="4"
+    />
+    <div class="addpic">
+        <p>添加图片</p>
+        <!-- <img src="" /> -->
+        <div class="m_uploadimgMain">
+              <ul>
+                <li v-for="(item,index) in attachmentList">
+                    <img v-if="item.type=='image'" :src="item.showimg">
+                    <video v-if="item.type=='video'" :src="item.showimg"></video>
+                    <img class="clearIcon" src="/static/img/dot-cleartxt.png" @click="delImg(item)"/>
+                </li>
+                <li class="f_adduploadimg" v-if="showAddImg">
+                    <!-- <van-uploader :after-read="changefile">
+                        <van-icon name="photograph" />
+                    </van-uploader> -->
+                    <input type="file" class="addFile" @change="changefile">
+                </li>
+              </ul>
+        </div>
+    </div>
+
+    <div class="tijiao" @click="saveJLK">提交</div>
+    <div class="mask" v-show="isMask"></div>
+
+
+    <transition name="flod">
+        <component v-show="isChangeCard" :is="currentView" @submitCard="submitCard"></component>
+    </transition>
+
+
+
+  </div>
+</template>
+
+<script>
+import { api } from "../../../../utils/Api/index"
+import * as utilsfun from "../../../../utils/functions.js";
+import comp_SelectCard from '../../commons/selectCard.vue';
+import md5 from 'js-md5';
+export default {
+    name:'cardDetail',
+    data() {
+        return {
+          isChangeCard:false,//是否切换卡牌
+          currentView:"",
+          actions:[],    //考评分项
+          showkpfx:false,//是否展示选择切换考评分项
+          minHour: 10,
+          maxHour: 20,
+          minDate: new Date(),
+          maxDate: new Date(2019, 10, 1),
+          currentDate: new Date(),
+          currentDateVal:utilsfun.formateDateAndTimeToString(new Date(),'date'),
+          showtime:false,//是否显示选择时间
+          actionsheetVal:'',
+          PyList:[],
+          curKpzFx:{},    //卡片子分项
+          pyText:'',   //卡片评语
+          cardItem:{}, //选择的当前卡片
+          selectStudent:[],//选中的学生List
+          attachmentList:[],//上传文件附件照片或者视频列表
+          isGiveCard:false,       //是否是从动态里过来的给与卡片
+          isMask:false,
+          AllSelectStudent:[], //选中的所有学生列表（全选班级，全选年级）都包含在内
+          showAddImg:true,//是否显示添加按钮按钮
+          listId:'',// 从列表点击发卡 传入放入id
+          iskpfx:false,// 是否展示考评分项 false 代表卡片的kpfx为0  则在该页面不显示考评分项字段，获取评语传卡片id   为true 代表显示考评分项  获取评语传所选择的考评分项的id
+          getPyId:'',// 获取评语的id  
+        }
+    },
+    components: {
+        comp_SelectCard,
+    },
+    mounted(){
+            this.iskpfx = this.$route.query.iskpfx == 1 ? true :false;
+            this.getPyId = this.$route.query.iskpfx == 1 ? '' : this.$route.query.cardId;
+            this.init();
+    },
+    methods: {
+        async init(){
+            //判断是不是给与卡片，还是老师主动发卡（给与卡片是不能切换卡片类型）
+            this.isGiveCard = this.$route.query.type=="givecard"?true:false;
+            this.listId = this.$route.query.id;
+            //获取当前选中的卡片类型
+            this.cardItem = this.$store.getters.getSelectCard;
+            if(!this.cardItem.kpid){
+                this.$toast('卡片类型不能为空')
+                this.$router.push({path:'/pages/teacher/cardRecord/postCard'});
+                return
+            }
+            
+            //获取当前卡片评语
+            if(!this.iskpfx){
+              var res = await this.$fetch(api.getPyList(),{xxdm:localStorage.getItem("xxdm"),id:this.getPyId});
+              this.PyList = res.data;
+            }
+            
+            //获取所有卡片类型和分项
+            var res = await this.$fetch(api.getKpFxList(),{xxdm:localStorage.getItem("xxdm"),kpid:this.cardItem.kpid});
+            this.actions = res.data;
+            //整理卡牌分项的数据
+            this.formatKpFx(this.actions);
+
+            //整理选中学生的数据 
+            this.formatAllStudentList();
+
+
+
+        },
+        /**
+         * 说明:选中默认评语
+         * 作者:RayJ
+         * 更新时间:2019-03-18
+         */
+        SelectPy(item){
+            // console.log(item);
+            this.$set(item,"check",!item.check);
+            if(!item.check){
+              this.pyText = this.pyText.replace(item.pynr,"");
+            }else{
+              this.pyText = this.pyText  + item.pynr;
+            }
+        },
+        /**
+         * 说明:格式化卡片分项
+         * 作者:RayJ
+         * 更新时间:2019-03-18
+         */
+        formatKpFx(itemList){
+          for(var i=0;i<itemList.length;i++){
+            itemList[i].name = itemList[i].fxmc;
+          }
+        },
+        /**
+         * 说明:格式化选择学生数组
+         * 作者:RayJ
+         * 更新时间:2019-03-18
+         */
+        formatSelStudent(itemList){
+          this.selectStudent = [];
+          for(var i=0;i<itemList.length;i++){
+            var obj = {}
+            obj.bjdm = itemList[i].bjdm;
+            obj.bjmc = itemList[i].bjmc;
+            obj.njdm = itemList[i].njdm;
+            obj.xh = itemList[i].xh;
+            obj.xm = itemList[i].xm;
+            this.selectStudent.push(obj);
+          }
+          console.log(this.selectStudent,153)
+        },
+        /**
+         * 说明:上传文件
+         * 作者:RayJ
+         * 更新时间:2019-03-19
+         */
+        // async changefile(file){
+        //     let fileobj = file.file;    //文件对象
+        //     let filetype;               //文件格式类型
+        //     let suffix;                 //文件后缀名
+        //     // console.log(file);
+        //     this.isupload = true;
+            
+        //     if(fileobj.type.indexOf('image')>=0){
+        //         console.log("传递的是图片")
+        //         filetype = "image";
+
+        //     }else if(fileobj.type.indexOf('video')>=0){
+        //         console.log("传递的是视频")
+        //         filetype = "video";
+        //     }
+
+        //     // console.log(file.offsetWidth);
+        //     //获取后缀名
+        //     suffix = fileobj.name.substring(fileobj.name.lastIndexOf('.'));
+
+        //     //console.log("suffix="+suffix);
+        //     if(fileobj.size > 10485760){
+        //         this.$toast('图片不能超过10M');
+        //         return false;
+        //     }
+
+        //     let formData = new FormData();
+        //     let bl = fileobj;
+        //     formData.append("file",  bl,  "file_"+Date.parse(new  Date()) + suffix);
+            
+        //     let res =  await this.$post(api.uploadFile(),formData)
+        //     this.attachmentList.push({url:res.data.basePath+res.data.path,type:filetype,size:fileobj.size,name:res.data.fileName});
+        //     this.attachmentList.length > 8 ? this.showAddImg = false : this.showAddImg = true; //当图片数量大于9时 隐藏添加图片按钮
+
+        // },
+        async changefile(els) {
+
+        //   let fileobj = file.file; //文件对象
+        //   let filetype; //文件格式类型
+        //   let suffix; //文件后缀名
+          // console.log(file);
+          this.isupload = true;
+
+
+
+
+          if (!els.target.files[0].size) return;
+          if(els.target.files[0].size > 10485760){
+            this.$toast('图片不能超过10M');
+            return;
+          }
+          this.fileList(els.target.files);//获取files文件组传入处理
+          //els.target.value = ''//清空val值，以便可以重复添加一张图片
+        //   if (fileobj.type.indexOf("image") >= 0) {
+        //     console.log("传递的是图片");
+        //     filetype = "image";
+        //   } else if (fileobj.type.indexOf("video") >= 0) {
+        //     console.log("传递的是视频");
+        //     filetype = "video";
+        //   }
+
+        //   //获取后缀名
+        //   suffix = fileobj.name.substring(fileobj.name.lastIndexOf("."));
+
+        //   //console.log("suffix="+suffix);
+        //   if (fileobj.size > 10485760) {
+        //     this.$toast("图片不能超过10M");
+        //     return false;
+        //   }
+
+        //   let formData = new FormData();
+        //   let bl = fileobj;
+        //   formData.append("file", bl, "file_" + Date.parse(new Date()) + suffix);
+
+        //   let res = await this.$post(api.uploadFile(), formData);
+        //   console.log(777777777777777777);
+
+        //   console.log(res);
+
+        //   this.attachmentList.push({
+        //     url: res.data.path,
+        //     type: filetype,
+        //     name: res.data.fileName,
+        //     showimg: res.data.basePath + res.data.path
+        //   });
+        //   this.imgnum = this.attachmentList.length;
+        //   if (this.imgnum >= 9) {
+        //     this.showAddImg = false;
+        //   }
+        },
+          fileList(files){
+          for (let i = 0; i < files.length; i++) {
+            this.fileAdd(files[i]);
+          }
+        },
+        fileAdd(file){
+          let that=this
+          var form = new FormData(); // FormData 对象
+          if(file.size/1024 > 1025) { //大于1M，进行压缩上传
+            that.photoCompress(file, {
+              quality: 0.2
+            }, function(base64Codes){
+              let bl = that.convertBase64UrlToBlob(base64Codes);
+              form.append("file", bl, "file_"+Date.parse(new Date())+".jpg"); // 文件对象
+              that.upploadimage(form)
+            });
+          }else{ //小于等于1M 原图上传
+            form.append("file", file); // 文件对象
+            that.upploadimage(form)
+          }
+        },
+          // 上传
+        async upploadimage (param) {
+            let res = await this.$post(api.uploadFile(), param);
+            this.attachmentList.push({
+              url: res.data.path,
+              type: 'image',
+              name: res.data.fileName,
+              showimg: res.data.basePath + res.data.path
+            });
+            console.log(7777777777)
+            console.log(res)
+
+            if(this.attachmentList.length >= 9){
+                this.showAddImg = false;
+            }else{
+                this.showAddImg = true;
+            }
+        
+        },
+        // 图片压缩
+        photoCompress(file,w,objDiv){
+          let that=this;
+          var ready=new FileReader();
+          /*开始读取指定File对象中的内容. 当读取操作完成时,readyState属性的值会成为DONE,result属性中将包含一个data: URL格式的字符串以表示所读取文件的内容.*/
+          ready.readAsDataURL(file);
+          ready.onload=function(){
+              var re=this.result;
+              that.canvasDataURL(re,w,objDiv)
+          }
+        },
+        canvasDataURL(path, obj, callback){
+          let img = new Image();
+          img.src = path;
+          img.onload = function(){
+            let that = this;
+            // 默认按比例压缩
+            let w = that.width,
+                h = that.height,
+                scale = w / h;
+            w = obj.width || w;
+            h = obj.height || (w / scale);
+            let quality = 0.7;  // 默认图片质量为0.7
+            //生成canvas
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+            // 创建属性节点
+            let anw = document.createAttribute("width");
+            anw.nodeValue = w;
+            let anh = document.createAttribute("height");
+            anh.nodeValue = h;
+            canvas.setAttributeNode(anw);
+            canvas.setAttributeNode(anh);
+            ctx.drawImage(that, 0, 0, w, h);
+            // 图像质量
+            if(obj.quality && obj.quality <= 1 && obj.quality > 0){
+                quality = obj.quality;
+            }
+            // quality值越小，所绘制出的图像越模糊
+            let base64 = canvas.toDataURL('image/jpeg', quality);
+            // 回调函数返回base64的值
+            callback(base64);
+          }
+        },
+        convertBase64UrlToBlob(urlData){
+          let arr = urlData.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+          while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          return new Blob([u8arr], {type:mime});
+        },
+        /**
+         * @description: base64 转文件
+         * @param {type}
+         * @return: file
+         */
+        convertBase64UrlToBlob(urlData){
+          let arr  =  urlData.split(','),  mime  =  arr[0].match(/:(.*?);/)[1],
+              bstr  =  atob(arr[1]),  n  =  bstr.length,  u8arr  =  new  Uint8Array(n);
+          while(n--){
+            u8arr[n]  =  bstr.charCodeAt(n);
+          }
+          return  new  Blob([u8arr],  {type:mime});
+        },
+        /**
+         * 说明:格式化附件图片或者视频的数组格式
+         * 作者:RayJ
+         * 更新时间:2019-03-19
+         */
+        formatAttachment(itemList){
+          var returnArr=[];
+          for(var i=0;i<itemList.length;i++){
+            var obj = {};
+            obj.fjdx = itemList[i].size;
+            obj.fjlx = itemList[i].type;
+            obj.fjmc = "";
+            obj.fjmcsmall = "";
+            obj.fjymc = itemList[i].name;
+            obj.sclj = itemList[i].url;
+            obj.scsj = utilsfun.formateDateAndTimeToString(new Date());
+            obj.tpgd = "0";
+            obj.tpkd = "0";
+            obj.xxdm = localStorage.getItem("xxdm");
+            obj.xxid = "";
+            returnArr.push(obj)
+          }
+          return returnArr
+        },
+        /**
+         * 说明:保存提交激励卡
+         * 作者:RayJ
+         * 更新时间:2019-03-19
+         */
+        async saveJLK(){
+
+            if(this.actions.length>0&&this.actionsheetVal==""){
+                this.$toast({message:'请选择考评分项',duration:1000});
+                return
+            }
+
+            if(this.pyText==""){
+                this.$toast({message:'请填写评语',duration:1000});
+                return
+            }
+
+            if(this.selectStudent.length==0){
+                this.$toast({message:'请选择发卡的对象',duration:1000});
+                return
+            }
+            var fjList = this.formatAttachment(this.attachmentList);
+            var parmaobj = {
+                bfsj: this.currentDateVal,
+                ckr: localStorage.getItem("zgh"),
+                ckrlx: "ls",
+                ckrxm: localStorage.getItem("truename"),
+                fjList:fjList,  //图片信息
+                fkpy: this.pyText,
+                kplx: this.cardItem.kpid,
+                kpzlx:this.curKpzFx.fxid,
+                kpmc: this.cardItem.kpmc,
+                sfsj: this.cardItem.sfsj,
+                xndm: localStorage.getItem("xn"),
+                xqdm: localStorage.getItem("xq"),
+                xsList: this.selectStudent,
+                xxdm: localStorage.getItem("xxdm"),
+            }
+            console.log(this.isGiveCard)
+            console.log()
+            if(this.isGiveCard){
+              await this.$fetch(api.updateAllDo(),{id:this.listId,lx:"sffk",value:"1"})
+            }
+            console.log(2222222222);
+            var res = await this.$post(api.saveJlkSave(),parmaobj,{headers:'application/json'})
+            if(res.status==200){
+              this.$toast({message:'发卡成功',duration:1000});
+              if(this.isGiveCard){
+                this.$fetch(api.updateAllDo(),{id:this.listId,lx:"fkjlid",value:res.data})
+              }
+              this.$router.push({path:'/pages/teacher/cardRecord/cardRecord'})
+            }else{
+              this.$toast({message:'发卡失败',duration:1000});
+            }
+            this.$store.dispatch('setSelectStudent',[]);
+            this.$store.dispatch('setSelectAllClass',[]);
+            this.$store.dispatch('setSelectAllGrade',[]);
+
+        },
+        /**
+         * @description:切换卡片 
+         * @param {type} 
+         * @return: 
+         */
+        async changecard(){
+          //console.log(444444444444444)
+            this.isChangeCard =  true;
+            this.currentView = "comp_SelectCard";
+            this.PyList = [];
+            this.actionsheetVal = '';
+            // if(!this.iskpfx){
+            //   var res = await this.$fetch(api.getPyList(),{xxdm:localStorage.getItem("xxdm"),id:this.getPyId});
+            //   this.PyList = res.data;
+            // }
+            //this.$router.push({path:'/pages/teacher/cardRecord/selectCard',query:{}})
+        },
+        /**
+         * @description: 添加图片
+         * @param {type} 
+         * @return: 
+         */
+        onReadpic(val){
+        console.log(66666666);
+        console.log(val);
+        },
+        /**
+         * @description: 切换考评分项
+         * @param {type} 
+         * @return: 
+         */
+        changekpfx(){
+        this.showkpfx = true;
+        },
+        /**
+         * @description: 取消评分项
+         * @param {type} 
+         * @return: 
+         */
+        onCancelkpfx(){
+        this.showkpfx = false;
+        },
+        /**
+         * @description: 选择考评分项
+         * @param {type} 
+         * @return: 
+         */
+        async onSelectkpfx(val){
+          this.curKpzFx = val;
+          this.actionsheetVal = val.name;
+          this.showkpfx = false;
+          this.getPyId = val.fxid;
+          var res = await this.$fetch(api.getPyList(),{xxdm:localStorage.getItem("xxdm"),id:this.getPyId});
+          this.PyList = res.data;
+        },
+        /**
+         * @description: 选择时间
+         * @param {type} 
+         * @return: 
+         */
+        changetime(){
+        this.isMask = true
+        this.showtime = true;
+        },
+
+        /**
+         * @description: 选择时间点击确认
+         * @param {type} 
+         * @return: 
+         */
+        confirmTime(val){
+            this.currentDateVal = utilsfun.formateDateAndTimeToString(val,'date');
+            //this.currentDate = utilsfun.formateDateAndTimeToString(val,'date');
+            this.showtime = false;
+            this.isMask = false
+        },
+        /**
+         * @description: 选择时间点击取消 
+         * @param {type} 
+         * @return: 
+         */
+        cancelTime(){
+        this.showtime = false;
+        },
+
+        /**
+         * 说明:格式化动态接收人
+         * 作者:RayJ
+         * 更新时间:2019-03-21
+         */
+        async formatAllStudentList(){
+            //获取学生列表
+            var studentdata =this.$store.getters.getSelectStudent;
+            console.log(studentdata,388888)
+            //获取班级列表
+            var classdata =this.$store.getters.getSelectAllClass;
+            //获取年级列表
+            var gradedata =this.$store.getters.getSelectAllGrade;
+            let classParam = [];
+            let gradeParam = [];  
+            //生成获取班级学生需要的班级参数列表
+            for(var i=0;i<classdata.length;i++){
+                classParam.push(classdata[i].uuid);
+            }
+            //生成获取年级学生需要的年级参数列表
+            for(var i=0;i<gradedata.length;i++){
+                gradeParam.push(gradedata[i].njdm);
+            }
+            //如果有全选年级,获取年级下所有学生并concat到学生列表中
+            if(gradeParam.length>0){
+                var grade_res = await this.$fetch(api.getStudentAllByGrade(),{xxdm:localStorage.getItem("xxdm"),dqxn:localStorage.getItem("xn"),list:gradeParam.toString()})
+                // console.log(grade_res);
+                studentdata = studentdata.concat(grade_res.data)
+            }
+            //如果有全选班级,获取班级下所有学生并concat到学生列表中
+            if(classParam.length>0){
+                var class_res = await this.$fetch(api.getStudentAllByClass(),{xxdm:localStorage.getItem("xxdm"),dqxn:localStorage.getItem("xn"),list:classParam.toString()})
+                // console.log(class_res);
+                studentdata = studentdata.concat(class_res.data)
+            }
+            this.AllSelectStudent = studentdata;
+            this.formatSelStudent(this.AllSelectStudent);
+            // var dtjsrArr = [];
+            
+            // for(var i=0;i<studentdata.length;i++){
+            //     dtjsrArr.push({jsrdm:studentdata[i].xh,jsrxm:studentdata[i].xm,jsrsfxz:"1"})
+            // }
+            // // console.log("dtjsrArr",dtjsrArr);
+            // return dtjsrArr
+        },
+        /**
+         * 说明:切换卡片
+         * 作者:RayJ
+         * 更新时间:2019-03-23
+         */
+        submitCard(item){
+            //console.log(item);
+            this.isChangeCard = false;
+            this.currentView = "";
+            this.$store.dispatch("setSelectCard",item);
+            this.cardItem = item;
+            console.log(7777777777777);
+            console.log(item)
+            this.getPyId = this.$route.query.iskpfx == 1 ? this.$route.query.cardId : this.cardItem.kpid;
+            console.log(this.getPyId)
+            this.iskpfx = item.iskpfx == 1 ? true :false;
+            this.init();
+        },
+
+        /**
+         * 说明:删除图片
+         * 作者:raq
+         * 更新时间:2019-03-26
+         */
+        delImg(item){
+            var indexImg = this.attachmentList.findIndex(function(value, index, arr) {
+                return value.name == item.name;
+            })
+            this.attachmentList.splice(indexImg,1);
+            this.showAddImg = true;
+        },
+    }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+    position: relative;
+  }
+  .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+  .cardDetail{
+    width: 100%;
+    height: 100%;
+    
+    .detailtop{
+      width: 100%;
+      height: px2rem(400px);
+      position: relative;
+      padding:px2rem(34px);
+      img{
+        border-radius: px2rem(30px);
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      p{
+        position:absolute;
+        right: px2rem(60px);
+        bottom:px2rem(60px);
+        font-size: px2rem(30px);
+        color:#fff;
+      }
+    }
+    .changecard{
+      width: px2rem(200px);
+      height: px2rem(60px);
+      margin:0 auto px2rem(30px) auto;
+      background-color: #F4F5F7;
+      border-radius: px2rem(40px);
+      color:#606266;
+      font-size: px2rem(30px);
+      text-align: center;
+      line-height: px2rem(60px);
+    }
+    .grayline{
+      width: 100%;
+      height: px2rem(20px);
+      background-color: #EFF1F3;
+    }
+    .write{
+      .van-cell--required::before{
+        left: px2rem(40px);
+      }
+      .pinyu{
+        width: 100%;
+        padding:0 px2rem(34px)  px2rem(10px)  px2rem(34px);
+        span{
+          background-color: #F4F5F7;
+          color:#303133;
+          font-size: px2rem(30px);
+          border-radius: px2rem(30px);
+          padding:px2rem(12px) px2rem(20px);
+          display: inline-block;
+          margin-right: px2rem(20px);
+        }
+        .active{
+          background-color: #3E81FF;
+          color:#fff;
+        }
+      }
+      .pinyutext{
+        width: 90%;
+        min-height: px2rem(220px);
+        position: relative;
+        margin:px2rem(34px);
+        margin-top:px2rem(10px);
+        border-radius: px2rem(20px);
+        font-size: px2rem(30px);
+        padding: px2rem(20px);
+        border: 1px solid #e6e6e6;
+      }
+    }
+    
+    .clearIcon{
+      left: 85%;
+      top:14%;
+      width: px2rem(40px);
+      height: px2rem(40px);
+    }
+    .addpic{
+      width: 100%;
+      position: relative;
+      padding:10px 15px;
+      color: #333;
+      float: left;
+      p{
+        font-size: px2rem(32px);
+        font-weight: 600;
+      }
+      .addpicimg{
+        width: px2rem(200px);
+        margin-top:px2rem(30px);
+      }
+    }
+
+    .tijiao{
+      float: left;
+      text-align: center;
+      line-height: px2rem(88px);
+      height: px2rem(88px);
+      background-color: #3E81FF;
+      color:#fff;
+      width: px2rem(640px);
+      font-size: px2rem(36px);
+      border-radius: px2rem(50px);
+      margin:0 px2rem(55px);
+      position: relative;
+    }
+    
+  }
+    .m_uploadimgMain{
+        float: left;
+        margin-top: px2rem(40px);
+        ul{
+            width: 100%;
+            float: left;
+            clear: both;
+        }
+        li{
+            width: px2rem(220px);
+            height: px2rem(200px); 
+            position: relative;
+            overflow: hidden;
+            float: left;
+            background: #eff1f3;
+            margin-right: px2rem(10px);
+            margin-bottom:px2rem(20px);
+            *{
+                max-width: 100%;
+                max-height: 100%;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%,-50%);
+            }
+        }
+        .f_adduploadimg{
+            width: px2rem(220px);
+            height: px2rem(200px);
+            background: url(../../../../assets/upimgbg.png) #eff1f3 no-repeat center;
+            background-size: auto 50%;
+            position: relative;
+            overflow: hidden;
+            
+            .van-uploader{
+              width: 100%;
+              height: 100%;
+              position: absolute;
+              opacity: 0;
+              
+            }
+            .addFile{
+              opacity: 0;
+              width: 100%;
+              height: 100%;
+              z-index: 99;
+              position: absolute;
+              left: 0;
+              top: 0;
+              }
+              .addImgIcon{
+              width: px2rem(200px);
+              height: px2rem(200px);
+              img{
+                  width: 100%;
+                  height: 100%;
+                  position: absolute;
+                  left: 0;
+                  top: 0;
+                  
+              }
+              }
+              }
+        .m_uploadinfo{
+            float: left;
+            width: 100%;
+            padding-top: px2rem(20px);
+            font-size: px2rem(24px);
+            color: #909399;
+        }
+    }
+    .datetimepicker{
+      z-index: 550;
+      width: 100%;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+    }
+   
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .cardDetail{
+    .van-field .van-cell__title{
+      margin-left:px2rem(40px);
+      max-width:75px;
+      span{
+        font-size: px2rem(32px);
+        font-weight:600;
+
+      }
+    }
+    .van-cell__title{
+      span{
+        font-size:px2rem(32px);
+        font-weight:600;
+      }
+    }
+    .van-cell__value{
+      span{
+        color:#3E81FF;
+        font-size:px2rem(32px);
+      }
+    }
+    .van-field__control{
+      text-align: right;
+    }
+  }
+</style>

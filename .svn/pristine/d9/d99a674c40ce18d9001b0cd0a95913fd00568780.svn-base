@@ -1,0 +1,438 @@
+<template>
+  <div class="releasewarp">
+      <div class="m_releasMain">
+          <textarea class="m_text empty" v-model="releasText" @click="releasIn" @blur="releasOut"></textarea>
+          <div class="m_uploadimgMain">
+              <ul>
+                  <li v-for="(item,index) in attachmentList">
+                      <img v-if="item.type=='image'" :src="item.url">
+                      <video v-if="item.type=='video'" :src="item.url"></video>
+                  </li>
+                  <li class="f_adduploadimg">
+                        <van-uploader :after-read="changefile">
+                            <van-icon name="photograph" />
+                        </van-uploader>
+                  </li>
+              </ul>
+              <div class="m_uploadinfo">
+                  0/9 (文件大小不超过10M）
+              </div>
+          </div>
+      </div>
+      <div class="m_relsesSetBox">
+          <div class="u_setCol">
+              <div class="f_tit">发布给谁</div>
+              <div class="f_value" v-on:click="selTeacher">{{curTeacher.xm?curTeacher.xm:'请选择'}}</div>
+          </div>
+          <div class="u_setCol">
+              <div class="f_tit">考评类型</div>
+              <div class="f_value" v-on:click="selCardType">
+                  {{curCardType[0]?(curCardType[0].text?curCardType[0].text:'请选择'):"请选择"}}
+                  {{curCardType[1]?(curCardType[1].text?"-"+curCardType[1].text:''):""}}</div>
+          </div>
+          <div class="u_setCol">
+              <div class="f_tit">短信通知</div>
+              <div class="f_value">
+                  <div class="f_selbox" :class="{'on':isMail}" v-on:click="isMail=!isMail">
+                      <div class="f_seldot"></div>
+                  </div>
+              </div>
+          </div>
+           <div class="m_botRelease">
+                <div class="ReleaseDynamic" v-on:click="releaseDynamic">发动态</div>
+            </div>
+      </div>
+
+
+    <transition name="upinto">
+    <van-picker v-if="isChangeCardLx" show-toolbar title="选择卡片类型" :columns="kplx" @cancel="onCancel"
+@confirm="onConfirm" @change="onTypeChange" class="f_grade_picker"/>
+    </transition>
+    <div class="mask" v-if="isMask"></div>
+
+
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index";
+  import * as utilsfun from "../../../../utils/functions.js";
+  import _ from 'lodash';
+  export default {
+    name: "rankingHome",
+    data(){
+        return {
+            releasText:"有什么新鲜事想告诉大家？",
+            curTeacher:{},
+            curCardType:[],
+            isMask:false,
+            isChangeCardLx:false,
+            kplx:[],
+            kptype:[],
+            kpsubtype:[],
+            isMail:false,
+            studentObj:{},
+            isupload:false,
+            attachmentList:[],
+        }
+    },
+    mounted() {
+        this.init();
+    },
+    methods: {
+        /**
+         * 说明:初始化基础数据并存入localStorage里(只做set不做判断是否存在,保证每次浏览页面都是最新的数据)
+         * 作者:RayJ
+         * 更新时间:2019-03-09
+         */
+        async init(){
+
+            this.getStudentInfo();
+
+            if((this.$store.getters.getDepartment).length!=0&&(this.$store.getters.getAllTeacher).length!=0){
+                this.curTeacher = this.$store.getters.getChoiceTeacher;
+                //console.log(this.curTeacher)
+            }else{
+                var parmaobj = {
+                    type:"student",
+                    xxdm:localStorage.getItem('xxdm'),
+                    zgh:"",
+                    xh:"30170115145913001",
+                    xndm:localStorage.getItem("xn"),
+                    xqdm:localStorage.getItem("xq"),
+                };
+                var res =  await this.$fetch(api.getReleaseDynamic(),parmaobj);
+                
+                this.$store.dispatch("setDepartment",res.grouplist);
+                this.$store.dispatch("setAllTeacher",res.stateTeacherList);
+                this.$store.dispatch("setCardType",res.kplxlist);
+                this.$store.dispatch("setCardSubType",res.kpzlxlist);
+            }
+
+
+            this.kplx = this.formatCardType(JSON.parse(this.$store.getters.getCardType));
+            
+            // console.log(JSON.parse(res.kplxlist))
+            // console.log(JSON.parse(res.kpzlxlist))
+        },
+        formatCardType(data){
+            var resarr = [];
+            var typearr = [];
+            var subarr = [];
+            console.log(data,103)
+            for(var i=0;i<data.length;i++){
+                typearr.push({text:data[i].kpmc,value:data[i].jlid,tplj:data[i].tplj});
+            }
+            var curSubType = _.filter(JSON.parse(this.$store.getters.getCardSubType),{'parent':data[0].jlid});
+            // console.log(curSubType,112);
+
+            for(var j=0;j<curSubType.length;j++){
+                subarr.push({text:curSubType[j].kpmc,value:curSubType[j].jlid});
+            }
+            resarr.push({className:'cardtype',values:typearr},{className:'cardsubtype',values:subarr})
+            // console.log(resarr);
+            return resarr
+        },
+        getSubTypeList(index){
+            var resarr = [];
+            var curSubType = _.filter(JSON.parse(this.$store.getters.getCardSubType),{'parent':JSON.parse(this.$store.getters.getCardType)[index].jlid});
+            for(var j=0;j<curSubType.length;j++){
+                resarr.push({text:curSubType[j].kpmc,value:curSubType[j].jlid});
+            }
+            return resarr
+        },
+        onTypeChange(picker, values){
+             picker.setColumnValues(1,this.getSubTypeList(picker.getIndexes()[0]));
+        },
+        onCancel(){
+            this.isChangeCardLx = false;
+            this.isMask = false;
+        },
+        onConfirm(value){
+            console.log(value)
+            this.curCardType = [];
+            if(value[1]){
+                this.curCardType.push(value[0]);
+                this.curCardType.push(value[1]);
+            }else{
+                this.curCardType.push(value[0]);
+                this.curCardType.push({});
+            }
+            this.isChangeCardLx = false;
+            this.isMask = false;
+
+            //console.log(this.curCardType);
+        },
+        /**
+         * 说明:发布动态
+         * 作者:RayJ
+         * 更新时间:2019-03-13
+         */
+        async releaseDynamic(){
+            var imgpathlist = [];
+            for(var i=0;i<this.attachmentList.length;i++){
+                imgpathlist.push(this.attachmentList[i].url)
+            }
+
+            console.log(this.curTeacher);
+            console.log(this.curCardType);
+
+            var tempobj = {
+                fbnr:this.releasText,
+                type:"xs",   
+                fbrdm:this.studentObj.xh,                    
+                xm:this.studentObj.xm,              //登录人姓名
+                xxdm:localStorage.getItem('xxdm'),                        //学校代码
+                sffk:"1",                           //是否发卡
+                kjfw:'gr',                          //可见范围
+                sfxz:'1',                           //是否新增
+                imgpathlist:imgpathlist,            //上传图片信息
+                dtjsrlist:[{jsrdm:this.curTeacher.gh,jsrxm:this.curTeacher.xm,jsrsfxz:"1"}],         //动态接收人
+                bjxxlist:[{
+                    bjmc:this.studentObj.bj,
+                    bjdm:this.studentObj.bjid
+                }],                                     //班级信息
+                bjdmlist:[this.studentObj.bjid],        //班级代码(教师端发卡这个变量为空""")
+                xb:"",                                  //性别
+
+                tpmc:this.curCardType[0].tplj,   //取图片路径
+                kplxmc:this.curCardType[0].text+this.curCardType[1]?this.curCardType[1].text:"",
+                dxtz:this.isMail?'1':'0',
+                fkpy:"",
+                fbdtsj:utilsfun.formateDateAndTimeToString(new Date()),          //转格式
+                kplx:this.curCardType[0].value,            
+                kpzlx:this.curCardType[1].value?this.curCardType[1].value:"",
+                fkjlid:"",
+                
+                // type:"student",
+                // xxdm:"1438",
+                // zgh:"",
+                
+            };
+            var parmaobj = {
+                sffk:"1",
+                xxdm:localStorage.getItem('xxdm'),
+                id:"",
+                kplx:this.curCardType[0].value,
+                kpzlx:this.curCardType[1].value?this.curCardType[1].value:"",
+                fkpy:this.releasText,
+                obj:JSON.stringify(tempobj),
+                xh:"30170115145913001",
+            }
+
+            var res = await this.$post(api.saveDynamic(),parmaobj,{headers:'application/json'}) 
+        },
+        selTeacher(){
+            this.$router.push({path:'/pages/student/dynamic/seldepartment'})
+        },
+        selCardType(){
+            this.isChangeCardLx = true;
+            this.isMask = true;
+        },
+        /**
+         * 说明:开始在textarea里填写内容
+         * 作者:RayJ
+         * 更新时间:2019-03-14
+         */
+        releasIn(){
+            if(this.releasText=="有什么新鲜事想告诉大家？"){
+                this.releasText = "";
+            }
+        },
+        /**
+         * 说明:textarea失去了焦点
+         * 作者:RayJ
+         * 更新时间:2019-03-14
+         */
+        releasOut(){
+            if(this.releasText == ""){
+                this.releasText = "有什么新鲜事想告诉大家？"
+            }
+        },
+        async getStudentInfo(){
+            var {data} = await this.$fetch(api.getStudentMsg(),{xxdm:'1438',xh:'30170115145913001'})
+            this.studentObj = data;
+            console.log(this.studentObj,214)
+        },
+        async changefile(file){
+            let fileobj = file.file;    //文件对象
+            let filetype;               //文件格式类型
+            let suffix;                 //文件后缀名
+            // console.log(file);
+            this.isupload = true;
+            
+            if(fileobj.type.indexOf('image')>=0){
+                console.log("传递的是图片")
+                filetype = "image";
+
+            }else if(fileobj.type.indexOf('video')>=0){
+                console.log("传递的是视频")
+                filetype = "video";
+            }
+
+            //获取后缀名
+            suffix = fileobj.name.substring(fileobj.name.lastIndexOf('.'));
+
+            //console.log("suffix="+suffix);
+            if(fileobj.size > 10485760){
+                this.$toast('图片不能超过10M');
+                return false;
+            }
+
+            let formData = new FormData();
+            let bl = fileobj;
+            formData.append("file",  bl,  "file_"+Date.parse(new  Date()) + suffix);
+            
+            let res =  await this.$post(api.uploadFile(),formData)
+            console.log(res); 
+            this.attachmentList.push({url:res.data[1].basePath+res.data[0].path,type:filetype})
+        },
+
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+    .upinto-enter-active{
+        animation-name:fadeInUp;animation-duration:.5s;
+    }
+    .releasewarp{
+        height: 100%;
+        background: #eff0f3;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    .m_releasMain{
+        width: 100%;
+        min-height: px2rem(430px);
+        padding: px2rem(30px);
+        background: #FFF;  
+        .m_text{
+            width: 100%;
+            height: px2rem(200px);
+            font-size: px2rem(30px);
+            text-indent: 0;
+            border:none;
+        }
+        .m_text.empty{
+            color: #909399;
+        }
+        .m_uploadimgMain{
+            ul{
+                width: 100%;
+                float: left;
+                clear: both;
+            }
+            li{
+                width: px2rem(100px);
+                height: px2rem(100px); 
+                position: relative;
+                overflow: hidden;
+                float: left;
+                background: #eff1f3;
+                margin-right: px2rem(10px);
+                *{
+                    max-width: 100%;
+                    max-height: 100%;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%,-50%);
+                }
+            }
+            .f_adduploadimg{
+                width: px2rem(100px);
+                height: px2rem(100px);
+                background: url(../../../../assets/upimgbg.png) #eff1f3 no-repeat center;
+                background-size: auto 50%;
+                position: relative;
+                overflow: hidden;
+                .van-uploader{
+                    width: 100%;
+                    height: 100%;
+                    position: absolute;
+                    opacity: 0;
+                }
+            }
+            .m_uploadinfo{
+                float: left;
+                width: 100%;
+                padding-top: px2rem(20px);
+                font-size: px2rem(24px);
+                color: #909399;
+            }
+        }
+    }
+    .m_relsesSetBox{
+        width: 100%;
+        background: #FFF;
+        flex: 1;
+        margin-top: px2rem(20px);
+        padding-left: px2rem(30px);
+        .u_setCol{
+            width: 100%;
+            height: px2rem(88px);
+            line-height: px2rem(88px);
+            border-bottom: 1px solid #e0e0e0;
+            font-size: px2rem(30px);
+            padding-right: px2rem(30px);
+            .f_tit{
+                float: left;
+            }
+            .f_value{
+                float: right;
+            }
+        }
+        .f_selbox{
+            width: px2rem(102px);
+            height: px2rem(62px);
+            border-radius: px2rem(31px);
+            background: #c8c8c8;
+            margin:px2rem(13px) 0;
+            position: relative;
+            .f_seldot{
+                width: px2rem(56px);
+                height: px2rem(56px);
+                border-radius: px2rem(28px);
+                background: #FFF;
+                position: absolute;
+                top: px2rem(3px);
+                left: px2rem(3px);
+                transition: .2s all;
+            }
+        }
+        .f_selbox.on{
+            background: #4cd964;
+            .f_seldot{
+                left: px2rem(42px);
+            }
+        }
+    }
+    .ReleaseDynamic{
+        position: fixed;
+        width: px2rem(640px);
+        height: px2rem(90px);
+        border-radius: px2rem(45px);
+        background: #3e81ff;
+        font-size: px2rem(36px);
+        color: #FFF;
+        line-height: px2rem(90px);
+        text-align: center;
+        bottom: px2rem(20px);
+        left: px2rem(55px);
+    }
+    .f_grade_picker{
+        z-index: 550;
+        position: fixed;
+        width: 100%;
+        bottom: 0;
+    }
+</style>

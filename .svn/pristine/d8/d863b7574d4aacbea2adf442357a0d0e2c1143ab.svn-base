@@ -1,0 +1,8 @@
+// 校端api
+//let BASE = '/elearn_cx/'
+let BASE = '/elearn/'
+/**
+ * 验证设备是否有保管人
+ * @returns {string}
+ */
+export let hasBgy = () =>  `${BASE}mobile/sfysbbgr.htm`;

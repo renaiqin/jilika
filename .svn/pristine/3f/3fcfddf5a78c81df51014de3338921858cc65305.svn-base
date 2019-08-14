@@ -1,0 +1,167 @@
+<template>
+  <div class="postcardwarp">
+    <van-cell-group>
+      <van-field
+        v-model="studentVal"
+        required
+        clearable
+        label="选择学生"
+        right-icon="arrow"
+        placeholder=""
+        readonly
+        is-link
+        @click="renderSelectStudent"
+      />
+      <van-field
+        v-model="cardVal"
+        type="password"
+        label="卡片类型"
+        placeholder=""
+        required
+        readonly
+      />
+    </van-cell-group>
+
+
+    <div class="imgmain clearfix">
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+        <div>
+          <div>
+            <van-icon name="success"/>
+          </div>
+        </div>
+      </div>
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+      </div>
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+      </div>
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+      </div>
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+      </div>
+      <div class="activeimg">
+        <img @click="selectCard" src="../../../../assets/1.png"/>
+      </div>
+    </div>
+    <div @click="save" class="save">保存</div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index"
+  
+export default {
+  name:'postCard',
+  data() {
+    return {
+      cardVal:'',//选择卡片的值
+      studentVal:'',//所选学生的值
+    }
+  },
+  methods: {
+    /**
+     * @description: 点击选择学生跳转到选择学生界面 
+     * @param {type} 
+     * @return: 
+     */
+    renderSelectStudent(){
+      console.log(77777777777);
+   
+      this.$router.push({path:'/pages/teacher/cardRecord/selectStudent',query:{}});
+    },
+    /**
+     * @description: 点击保存跳转到发卡详情
+     * @param {type} 
+     * @return: 
+     */
+    save(){
+      this.$router.push({path:'/pages/teacher/cardRecord/cardDetail',query:{}});
+    },
+    /**
+     * @description: 选中卡片
+     * @param {type} 
+     * @return: 
+     */
+    selectCard(){
+
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+    position: relative;
+  }
+  .postcardwarp{
+    width: 95%;
+    height: 100%;
+    margin:0 auto;
+    .imgmain{
+      width: 100%;
+      margin:0 auto;
+      .activeimg{
+        width: 42%;
+        margin:2%;
+        float: left;
+        position: relative;
+        img{
+          width: 100%;
+          border-radius: px2rem(20px);
+          height: px2rem(150px);
+        }
+        div{
+          width: 100%;
+          height: px2rem(150px);
+          border-radius: px2rem(20px);
+          position: absolute;
+          top: 0;
+          left: 0;
+          background: rgba(0,0,0,0.4);
+          display: block;
+          div{
+            width: px2rem(50px);
+            height: px2rem(50px);
+            background-color: #3E81FF;
+            border-radius: px2rem(50px);
+            margin:px2rem(56px) 43% ; 
+            .van-icon{
+              color:#fff;
+              font-size: px2rem(30px);
+              display: block;
+              margin:0 auto;
+              line-height: px2rem(50px);
+              text-align: center;
+              z-index: 99;
+            }
+          }
+          
+        }
+      }
+    }
+    .save{
+      width: px2rem(642px);
+      height: px2rem(88px);
+      margin:px2rem(30px) auto;
+      background-color: #3E81FF;
+      color:#fff;
+      text-align: center;
+      line-height: px2rem(88px);
+      border-radius: px2rem(40px);
+      font-size: px2rem(34px);
+    }
+  }
+
+   
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  
+</style>

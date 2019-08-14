@@ -1,0 +1,19 @@
+
+/**
+* 获取token
+* @returns {string}
+*/
+export let token = () => `/api/auth/jwt/token`;
+
+/**
+* 获取用户基础信息
+* @returns {string}
+*/
+export let info = () => `/api/admin/user/front/info`;
+
+
+/**
+* 查询最新获卡或发卡
+* @returns {string}
+*/
+export let getNewKpxxList = () => `/jlkglIndex/getNewKpxxList`;

@@ -1,0 +1,748 @@
+<template>
+  <div class="m_RankList">
+
+        <div @click="showpop" class="m_showweek clearfix">
+            <P>{{nf}}年{{yf}}月</P>
+        </div>
+
+        <transition name="list">
+            <van-datetime-picker v-if="isshow" class="changeDatetime" v-model="currentDate" type="year-month"  @confirm="confirmtime" @cancel="onCancel" />
+        </transition>
+
+
+        <!--  -->
+        <div v-if="zspm == 1" class="m_Rmianbox">
+            <div class="m_ListHead">
+                <div class="u_Rtit">{{list_tit}}</div>
+                <div class="u_selGrade" v-if="active_type != 0" @click="changeNjBj">{{selNjBjText?selNjBjText:'选择年级'}}</div>
+            </div>
+            <ul class="u_Rlist">
+
+                <!-- v-if="localStorage.getItem('usertype')=='4'" -->
+                <li v-if="usertype == '4' && myRankList.length != 0 && myRankList[0].jlkyftj.kplx == '总榜主'">
+                    <div class="u_Rbox">
+                        <div class="f_imgleft">
+                            <img src="/static/img/zbz.png" class=""/>
+                        </div>
+                        <div class="f_infomid">
+                            <p>{{myRankList[0].jlkyftj.xm}}</p>
+                            <p class='f_grade'>{{myRankList[0].jlkyftj.bjmc}}</p>
+                        </div>
+                        <div class="f_right">
+                        <span class="spanwarp">{{myRankList[0].jlkyftj.hks}}</span>
+                        <p class="f_ShowList" v-if="myRankList[0].childrenLyb&&myRankList[0].childrenLyb.length>=2" v-show="!myRankList[0].isOpen" @click="moreList(myRankList[0])">查看{{myRankList[0].childrenLyb.length}}名并列 <i></i></p>
+                        </div>
+                    </div>
+
+                    <div v-if="myRankList[0].childrenLyb&&myRankList[0].childrenLyb.length>=1" v-show="myRankList[0].isOpen" class="u_RSubList">
+                        
+                        <div class="u_Rbox" v-for="(sitem,index) in myRankList[0].childrenLyb">
+                            <div class="f_imgleft">
+                                <img :src="item.jlkyftj.tplj" class=""/>
+                            </div>
+                            <div class="f_infomid">
+                                <p>{{sitem.xm}}</p>
+                                <p class='f_grade'>{{sitem.bjmc}}</p>
+                            </div>
+                            <div class="f_right">
+                                <span class="spanwarp">{{sitem.hks}}</span>
+                            </div>
+                        </div>
+                        <div class="f_CloseList" @click="closeList(myRankList[0])"></div>
+                    </div>
+                </li>
+
+
+
+
+
+
+                <li v-for="(item,index) in cardList" v-if="item.jlkyftj.xm">
+                    <div class="u_Rbox">
+                        <div class="f_imgleft">
+                            <img :src="item.jlkyftj.kplx == '总榜主'? '/static/img/zbz.png':item.jlkyftj.tplj?item.jlkyftj.tplj:'/static/img/test1.png'" class=""/>
+                        </div>
+                        <div class="f_infomid">
+                            <p>{{item.jlkyftj.xm}}</p>
+                            <p class='f_grade'>{{item.jlkyftj.bjmc}}</p>
+                        </div>
+                        <div class="f_right">
+                            <span class="kplxText">{{item.jlkyftj.kplx}}</span>
+                        <span class="spanwarp">{{item.jlkyftj.hks}}</span>
+                        <p class="f_ShowList" v-if="item.childrenLyb&&item.childrenLyb.length>=1" v-show="!item.isOpen" @click="moreList(item)">查看{{item.childrenLyb.length}}名并列 <i></i></p>
+                        </div>
+                    </div>
+
+                    <div v-if="item.childrenLyb&&item.childrenLyb.length>=2" v-show="item.isOpen" class="u_RSubList">
+                        
+                        <div class="u_Rbox" v-for="(sitem,index) in item.childrenLyb">
+                            <div class="f_imgleft">
+                                <img :src="item.jlkyftj.tplj?item.jlkyftj.tplj:'/static/img/test1.png'" class=""/>
+                            </div>
+                            <div class="f_infomid">
+                                <p>{{sitem.xm}}</p>
+                                <p class='f_grade'>{{sitem.bjmc}}</p>
+                            </div>
+                            <div class="f_right">
+                                <span class="kplxText">{{sitem.kplx}}</span>
+                                <span class="spanwarp">{{sitem.hks}}</span>
+                            </div>
+                        </div>
+                        <div class="f_CloseList" @click="closeList(item)"></div>
+                    </div>
+                </li>
+
+            </ul>
+        </div>
+        <!---->
+
+
+
+        <div v-else  class="m_Rmianbox">
+            <div class="m_ListHead">
+                <div class="u_Rtit">{{list_tit}}</div>
+                <div class="u_selType" @click="changeLx">{{selLxText?selLxText:'全部类型'}}</div>
+                <div class="u_selGrade" v-if="active_type != 0" @click="changeNjBj">{{selNjBjText?selNjBjText:'选择年级'}}</div>
+            </div>
+            <ul class="u_GradeRankList">
+                <li v-if="usertype == '4'  && myRankList.length != 0 && myRankList[0].jlkyftj">
+                    <div v-if="active_type == 0"  class="card_rank no">{{myRankList[0].jlkyftj.qxpm}}</div>
+                    <div v-if="active_type == 1"  class="card_rank no">{{myRankList[0].jlkyftj.njpm}}</div>
+                    <div v-if="active_type == 2"  class="card_rank no">{{myRankList[0].jlkyftj.bjpm}}</div>
+                    <div class="card_name">我</div>
+                    <div class="card_grade">{{myRankList[0].jlkyftj.bjmc}}</div>
+                    <div class="card_num">{{myRankList[0].jlkyftj.hks}}</div>
+
+                    <div v-if="myRankList[0].childrenLyb && myRankList[0].childrenLyb.length >=1">
+                        <div class="f_ShowList" v-show="!myRankList[0].isOpen" @click="moreList(myRankList[0])">查看{{myRankList[0].childrenLyb.length}}名并列 <i></i></div>
+                        <div class="u_RSubList" v-show="myRankList[0].isOpen">
+                            <li v-for="(sitem,index) in myRankList[0].childrenLyb">
+                                <div class="card_rank"></div>
+                                <div class="card_name">{{sitem.xm}}</div>
+                                <div class="card_grade">{{sitem.bjmc}}</div>
+                                <div class="card_num">{{sitem.hks}}</div>
+                            </li>
+                            <div class="f_CloseList" @click="closeList(myRankList[0])"></div>
+                        </div>
+                    </div>
+                </li>
+
+
+
+
+
+
+                <li v-for="(item,index) in cardList">
+                    <div class="card_rank" :class="'no'+(index+1)">{{index+1}}</div>
+                    <div class="card_name">{{item.jlkyftj.xm}}</div>
+                    <div class="card_grade">{{item.jlkyftj.bjmc}}</div>
+                    <div class="card_num">{{item.jlkyftj.hks}}</div>
+
+                    <div v-if="item.childrenLyb && item.childrenLyb.length >=1">
+                        <div class="f_ShowList" v-show="!item.isOpen" @click="moreList(item)">查看{{item.childrenLyb.length}}名并列 <i></i></div>
+                        <div class="u_RSubList" v-show="item.isOpen">
+                            <li v-for="(sitem,index) in item.childrenLyb">
+                                <div class="card_rank"></div>
+                                <div class="card_name">{{sitem.xm}}</div>
+                                <div class="card_grade">{{sitem.bjmc}}</div>
+                                <div class="card_num">{{sitem.hks}}</div>
+                            </li>
+                            <div class="f_CloseList" @click="closeList(item)"></div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+
+        </div>
+    
+    <div v-show="ismask" class="mask"></div>
+
+    <transition name="list">
+        <van-picker v-if="isKpLx" class="changeLx" show-toolbar title="选择卡片类型" :columns="lxList" @cancel="onCancel" @confirm="onConfirmLx"/>
+    </transition>
+
+    <transition name="list">
+        <van-picker v-if="isNjBj" class="changeLx" show-toolbar title="选择年级" :columns="njbjList" @cancel="onCancel" @confirm="onConfirmNjBj" @change="onNjChange"/>
+    </transition>
+        
+    
+  </div>
+</template>
+
+<script>
+
+  import { api } from "../../../utils/Api/index";
+  export default {
+    name: "rankingHome",
+    props: [
+        'active_type'
+    ],
+    data(){
+        return {
+            list_tit:"激励卡榜主名单",                      //列表标题 
+            xndm:"",                                       //当前的学年代码
+            xqdm:"",                                       //当前的学期代码
+            zspm:1,                                        //琅琊榜规则 显示是前十还是前五 还是all
+            currentDate:new Date(),                        //显示当前时间，默认时间
+            isshow:false,                                  //是否 展示切换时间面板
+            isNjBj:false,                                  //是否 选择年级班级
+            isKpLx:false,                                  //是否 选择卡片类型
+            ismask:false,                                  //是否 遮罩层
+            nf:"",                                         //当前选择的年份
+            yf:"",                                         //当前选择的月份
+            cardList:[],                                   // * 最终显示的卡片列表
+            lxList:[],                                     //选择卡片类型列表
+            njbjList:[],                                   //选择年级班级列表
+            selLxText:"",                                  //页面中 显示的类型文字
+            selLxValue:-1,                                 //实际中 选择的类型值
+            selNjBjText:"",                                //页面中 显示的年级班级文字
+            selNjValue:-1,                                 //实际中 选择的年级值
+            selBjValue:-1,                                 //实际中 选择的班级值
+            resNjBjData:[],                                //原始的年级班级数据(接口返回的数据无加工)
+            myRankList:[],                                  //我的排行
+            usertype:'',                                    //当前登录的用户身份
+        }
+    },
+    mounted() {
+        this.nf = this.formatter('year',this.currentDate);
+        this.yf = parseInt(this.formatter('month',this.currentDate))+1;
+        this.usertype = localStorage.getItem('usertype')
+        this.init();
+    },
+    methods: {
+        async init(){
+
+            //获取当前学年学期
+            var xnxqobj = JSON.parse(localStorage.getItem("xnxqList"));
+            this.xndm = xnxqobj.xndm;
+            this.xqdm = xnxqobj.xqdm;
+
+            //获取年级班级信息列表
+            this.resNjBjData = JSON.parse(localStorage.getItem("allNjBjList"));
+            this.njbjList =  this.formatNjBj(JSON.parse(localStorage.getItem("allNjBjList")));
+            //初始化赋值默认年级和班级
+            if(this.active_type==1){
+                this.selNjBjText = this.njbjList[0].text;
+                this.selNjValue = this.njbjList[0].value;
+            }else if(this.active_type==2){
+                this.selNjBjText = this.resNjBjData[0].bjList[0].bj;
+                this.selNjValue = this.resNjBjData[0].njdm;
+                this.selBjValue = this.resNjBjData[0].bjList[0].uuid;
+            }
+
+            //获取卡片类型列表
+            //类型返回格式处理成 text value格式
+            this.lxList = this.formatCardType(JSON.parse(localStorage.getItem("kplxList")));
+
+            //获取琅琊榜规则
+            this.zspm =  localStorage.getItem("zspm");
+            this.zspm != 1 ?  this.list_tit = "激励卡排行榜" :  this.list_tit = "激励卡榜主名单";
+            if(this.active_type==0){
+                this.getCardList({lx:'qx',kplx:'all'});
+            }else if(this.active_type==1){
+                this.getCardList({lx:'nj',njdm:this.selNjValue,kplx:this.selLxValue});
+            }else if(this.active_type==2){
+                this.getCardList({lx:'bj',bjdm:this.selBjValue,kplx:this.selLxValue});
+            }
+            
+            //根据active_type来分别获取琅琊榜列表
+            
+        },
+        /**
+         * 说明:格式化卡片类型数据
+         * 作者:RayJ
+         * 更新时间:2019-03-06
+         */
+        formatCardType(data){
+            var resarr = [];
+            resarr.push({text:"全部类型",value:-1})
+            for(var i=0;i<data.length;i++){
+                resarr.push({text:data[i].kpmc,value:data[i].jlid})
+            }
+            return resarr
+        },
+        /**
+         * 说明:格式化卡片类型数据返回一个 vant的picker组件可以接受的数组  (一级和二级联动都是调用此方法)
+         * 参数:data是年级班级的全部数据
+         * 作者:RayJ
+         * 更新时间:2019-03-06
+         */
+        formatNjBj(data){
+            var resarr = [];
+            if(this.active_type==1){
+                for(var i=0;i<data.length;i++){
+                    resarr.push({text:data[i].njmc,value:data[i].njdm})
+                }
+            }else if(this.active_type==2){
+                var njarr = [];
+                //默认年级index为0下的班级列表为默认列表
+                var bjarr = this.getBjList(data,0);
+                for(var i=0;i<data.length;i++){
+                    njarr.push(data[i].njmc);
+                }
+                //vant多级联动需要的格式对象数据[{第一级},{第二级}]
+                //并通过 picker.setColumnValues(1,[第二级])来更换第二级的数据,下在onchange里(本文是onNjChange此方法);
+                resarr.push({className:'njlist',values:njarr},{className:'bjlist',values:bjarr})
+            }
+            return resarr
+        },
+        getBjList(data,index){
+            var resarr = [];
+            for(var j=0;j<data[index].bjList.length;j++){
+                resarr.push(data[index].bjList[j].bj)
+            }
+            return resarr;
+        },
+        /**
+         * 说明:获取琅琊榜列表数据
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        async getCardList(obj){
+            if(this.zspm == 1){
+               obj.kplx = ''; 
+            }
+
+            var parmaobj = {
+                xxdm:localStorage.getItem('xxdm'),
+                xqdm:this.xqdm,
+                xndm:this.xndm,
+                tjlx:obj.lx,
+                limitSize:this.zspm,
+                kplx:obj.kplx==-1?"All":obj.kplx,
+                bjdm:obj.bjdm,
+                njdm:obj.njdm,
+                nf:this.nf,
+                yf:this.yf,
+                //xh: localStorage.getItem("usertype")=="4" ? localStorage.getItem('xh') : null
+            };
+            //获取卡片列表
+            // var {data} = await this.$post(api.geLybList(),parmaobj,{headers:'application/json'});
+            // this.cardList = data;
+             this.cardList = [];
+             this.myRankList = [];
+            var {data} = await this.$post(api.geLybList(),parmaobj,{headers:'application/json'});
+            if(localStorage.getItem("usertype")=="4"){
+                this.cardList = data.slice(0,data.length-1);
+                this.myRankList = data.slice(data.length-1,data.length);
+            }else{
+                this.cardList = data;
+            }
+
+            console.log( this.myRankList.length)
+        },
+        /**
+         * 说明:展开更多
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        moreList(item){
+            this.$set(item,"isOpen",true)
+        },
+        /**
+         * 说明:关闭更多
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        closeList(item){
+            this.$set(item,"isOpen",false)
+        },
+
+        formatter(type, value) {
+            if (type === 'year') {
+                return `${value.getFullYear()}`;
+            } else if (type === 'month') {
+                return `${value.getMonth()}`
+            }
+            return value;
+        },
+        /**
+         * 说明:是否展示切换时间面板
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        showpop(){
+            this.ismask = true;
+            this.isshow = true;
+        },
+        /**
+         * 说明:关闭所有弹层和遮罩层
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        onCancel(){
+            this.isKpLx = false;
+            this.isNjBj = false;
+            this.isshow = false;
+            this.ismask = false; 
+        },
+        /**
+         * 说明:时间面板点击确定 
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        confirmtime(value){
+            //获取选择的年月并转换成数字赋值
+            this.nf = this.formatter('year',value);
+            this.yf = parseInt(this.formatter('month',value))+1;
+            //type=0是全校    type=1是年级需要传年级代码   type=2是班级需要传班级代码
+          
+            //if(this.zspm > 1){
+            if(this.active_type==0){
+                this.getCardList({lx:'qx',})
+            }else if(this.active_type==1){
+                this.getCardList({lx:'nj',njdm:this.selNjValue,kplx:this.selLxValue})
+            }else if(this.active_type==2){
+                this.getCardList({lx:'bj',bjdm:this.selBjValue,kplx:this.selLxValue})
+            }
+            // }else{
+            //     if(this.active_type==0){
+            //         this.getCardList({lx:'qx',kplx:''});
+            //     }else if(this.active_type==1){
+            //         this.getCardList({lx:'nj',njdm:this.selNjValue,kplx:''});
+            //     }else if(this.active_type==2){
+            //         this.getCardList({lx:'bj',bjdm:this.selBjValue,kplx:''});
+            //     }
+            // }
+            this.isshow = false;
+            this.ismask = false;
+        },
+        /**
+         * 说明:点击展开选择类型选择框 
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        changeLx(){
+            this.ismask = true;
+            this.isKpLx = true;
+        },
+        /**
+         * 说明:点击展开选择年级班级选择框 
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        changeNjBj(){
+            this.ismask = true;
+            this.isNjBj = true;
+        },
+        /**
+         * 说明:点击确定选择的卡片类型 
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        onConfirmLx(value){
+            console.log(value);
+            this.selLxText = value.text;
+            this.selLxValue = value.value;
+            if(this.active_type==0){
+                this.getCardList({lx:'qx',kplx:this.selLxValue})
+            }else if(this.active_type==1){
+                this.getCardList({lx:'nj',njdm:this.selNjValue,kplx:this.selLxValue})
+            }else if(this.active_type==2){
+                this.getCardList({lx:'bj',bjdm:this.selBjValue,kplx:this.selLxValue})
+            }
+            this.ismask = false;
+            this.isKpLx = false; 
+        },
+        /**
+         * 说明:点击确定选择的年级班级
+         * 作者:RayJ
+         * 更新时间:2019-03-07
+         */
+        onConfirmNjBj(value,index){
+            //赋值给选中的变量,然后再调用获卡列表接口
+            if(this.active_type==1){
+                this.selNjBjText = this.njbjList[index].text;
+                this.selNjValue = this.njbjList[index].value;
+                this.getCardList({lx:'nj',njdm:this.selNjValue,kplx:this.selLxValue})
+            }else if(this.active_type==2){
+                this.selNjBjText = this.resNjBjData[index[0]].bjList[index[1]].bj;
+                this.selNjValue = this.resNjBjData[index[0]].njdm;
+                this.selBjValue = this.resNjBjData[index[0]].bjList[index[1]].uuid
+                this.getCardList({lx:'bj',bjdm:this.selBjValue,kplx:this.selLxValue})
+            }
+            this.ismask = false;
+            this.isNjBj = false; 
+        },
+        /**
+         * 说明:切换年级列表,更新班级列表内容 
+         * 作者:RayJ
+         * 更新时间:2019-03-08
+         */
+        onNjChange(picker, values) {
+            if(this.active_type==1){
+                return
+            }else if(this.active_type==2){
+                picker.setColumnValues(1,this.getBjList(this.resNjBjData,picker.getIndexes()[0]));
+            }
+        },
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../style/style.scss';
+.list-enter-active{
+    animation-name:fadeInUp;animation-duration:.5s;
+}
+.list-leave-active{
+    animation-name:fadeOutDown;animation-duration:.5s;
+}  
+.m_RankList{
+    width: 100%;
+    float: left;
+}
+.m_Rmianbox{
+    float: left;
+    width: 100%;
+    padding: 0 px2rem(30px);
+}
+.u_Rtit{
+    font-size: px2rem(32px);
+    color:#333;
+    font-weight: 100;
+    margin-top: px2rem(45px);
+    line-height: px2rem(45px);
+    float: left;
+}
+.u_Rlist{
+    width: 100%;
+    li{
+        .u_RSubList{
+            float: left;
+            .u_Rbox{
+                padding:0 0 px2rem(30px) 0;
+            }
+        }
+        .f_CloseList{
+            height: px2rem(45px);
+            width: 100%;
+            background: url(../../../assets/arrow_up.png) no-repeat top center;
+            background-size: auto 40%;
+            float: left;
+        }
+        .u_Rbox{
+            width: 100%;
+            padding:px2rem(30px) 0;
+            position: relative;
+            float: left;
+        }
+        float: left;
+        width: 100%;
+        position: relative;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .f_imgleft{
+        width: px2rem(206px);
+        height: px2rem(94px);
+        border-radius: px2rem(8px);
+        overflow: hidden;
+        float: left;
+        img{
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    }
+    .f_infomid{
+        width: px2rem(450px);
+        height: 100%;
+        float: left;
+        font-size: px2rem(30px);
+        color: #333;
+        padding-left: px2rem(30px);
+        .f_grade{
+            font-size: px2rem(26px);
+            margin-top: px2rem(34px);
+            color: #999;
+        }
+    }
+    .f_right{
+        position: absolute;
+        top: px2rem(30px);
+        right: 0;
+        font-size: px2rem(26px);
+        color: #ccc;
+        text-align: right;
+        height: px2rem(94px);
+        .spanwarp{
+            display: inline-block;
+            height: px2rem(35px);
+            background: url(../../../assets/cardicon.png) no-repeat left center;
+            background-size: auto 100%;
+            padding-left: px2rem(35px);
+            line-height: px2rem(40px);
+            color: #666;
+        }
+        .f_ShowList{
+            position: absolute;
+            bottom: 0;
+            display: inline-block;
+            word-break: keep-all;
+            right: 0;
+            color: #ccc;
+            padding-right: px2rem(35px);
+            i{
+                display: inline-block;
+                width: px2rem(16px);
+                height: px2rem(27px);
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                background: url(../../../assets/arrow_right.png) no-repeat;
+                background-size: 100%;
+            }
+        }
+        .kplxText{
+            color:#333;
+        }
+    }
+}
+.m_ListHead{
+    width: 100%;
+    .u_selGrade,.u_selType{
+        font-size: px2rem(30px);
+        color: #303030;
+        float: right;
+        margin-top: px2rem(45px);
+        width: px2rem(180px);
+        line-height: px2rem(45px);
+        text-align: right;
+        background: url(../../../assets/arrow_down.png) no-repeat right center;
+        background-size: auto 35%;
+        padding-right:px2rem(40px);
+        margin-left: px2rem(30px);
+        text-overflow: ellipsis;
+        overflow: hidden;
+        height: px2rem(45px);
+        white-space: nowrap;
+    }
+}
+.u_GradeRankList{
+    width: 100%;
+    float: left;
+    font-size: px2rem(32px);
+    margin-top:px2rem(20px);
+    li{
+        min-height: px2rem(100px);
+        line-height: px2rem(80px);
+        padding: px2rem(10px) 0;
+        width:100%;
+        float: left;
+        .u_RSubList{
+            float: left;
+        }
+        .f_ShowList{
+            width: 100%;
+            height: px2rem(40px);
+            line-height: px2rem(40px);
+            font-size: px2rem(28px);
+            color:#c7c7c7;
+            text-align: right;
+            position: relative;
+            float: left;
+            padding-right: px2rem(55px);
+            i{
+                right: px2rem(20px);
+                display: inline-block;
+                width: px2rem(50px);
+                height: px2rem(40px);
+                position: absolute;
+                background: url(../../../assets/arrow_right.png) no-repeat right center;
+                background-size:auto 60%;
+            }
+        }
+        .f_CloseList{
+            height: px2rem(35px);
+            width: 100%;
+            background: url(../../../assets/arrow_up.png) no-repeat top center;
+            background-size: auto 50%;
+            float: left;
+        }
+    }
+    .card_rank,.card_name,.card_grade,.card_num{
+        float: left;
+        height: px2rem(80px);;
+    }
+    .card_rank{
+        width: px2rem(70px);
+        text-align: center;
+        font-weight: 700;
+    }
+    .card_name{
+        width: px2rem(280px);
+        padding-left: px2rem(30px);
+    }
+    .card_grade{
+        width: px2rem(245px);
+        font-size: px2rem(28px);
+        padding-right: px2rem(30px);
+        text-align: right;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        height: px2rem(80px);
+        white-space: nowrap;
+        color: #666;
+    }
+    .card_num{
+        background: url(../../../assets/cardicon.png) no-repeat left center;
+        background-size: auto 50%;
+        width: px2rem(90px);
+        padding-left: px2rem(40px);
+        font-size: px2rem(28px);
+        color: #666;
+    }
+    .card_rank.no1{
+        background: url(../../../assets/no1.png) no-repeat center;
+        background-size: 60% auto;
+        text-indent: -9999px;
+    }
+    .card_rank.no2{
+        background: url(../../../assets/no2.png) no-repeat center;
+        background-size: 60% auto;
+        text-indent: -9999px;
+    }
+    .card_rank.no3{
+        background: url(../../../assets/no3.png) no-repeat center;
+        background-size: 60% auto;
+        text-indent: -9999px;
+    }
+}
+.f_grade_picker{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+}
+.m_showweek{
+    width: 100%;
+    height: px2rem(70px);
+    background: #FFF;
+    text-align: center;
+    font-size: px2rem(32px);
+    line-height: px2rem(74px);
+    box-shadow: 0 px2rem(15px) px2rem(15px) rgba(240, 240, 240, .6);
+    position: relative;
+    z-index: 1;
+    p{
+        display: inline-block;
+        height: 100%;
+        background: url(../../../assets/weekicon.png) no-repeat left center;
+        background-size: auto 50%;
+        padding-left: px2rem(55px);
+    }
+    .van-picker{
+        width: 100%;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+    }
+}
+.changeDatetime,.changeLx{
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+    left: 0;
+    z-index: 550;
+}
+</style>

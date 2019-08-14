@@ -1,0 +1,139 @@
+<template>
+  <div class="selectCard">
+    <van-checkbox-group v-model="result">
+      <van-cell-group>
+        <!-- <van-cell
+          v-for="(item,index) in list"
+          clickable
+          :key="item"
+          :title="`复选框 ${item}`"
+          @click="toggle(index)"
+        > -->
+        <div class="groupwarp"  >
+          
+          
+          <div class="groupright">
+            <!-- <p>获卡人：周杰伦</p>
+            <p>评价人：周杰伦</p>
+            <p>日期：2019-02-21</p> -->
+          </div>
+          <div class="groupmid" >
+          </div>
+          <img src="../../../../assets/1.png" class="groupleft"/>
+          <van-checkbox />
+        </div>
+          
+          <!--  :name="item" ref="checkboxes" -->
+        <!-- </van-cell> -->
+      </van-cell-group>
+    </van-checkbox-group>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index"
+  
+export default {
+  name:'selectCard',
+  data() {
+    return {
+      list: ['../../../../assets/1.png', '../../../../assets/1.png', '../../../../assets/1.png'],
+      result: ['../../../../assets/1.png', '../../../../assets/1.png']
+    }
+  },
+  methods: {
+    toggle(index) {
+      this.$refs.checkboxes[index].toggle();
+
+    }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+    position: relative;
+  }
+  .selectCard{
+    .groupwarp{
+      height: px2rem(160px);
+      margin-top:px2rem(30px);
+      margin-left: px2rem(30px);
+      .groupleft{
+        width: px2rem(413px);
+        float: left;
+        height: 100%;
+        margin-left: -4px;
+      }
+      .groupmid{
+        height: 100%;
+        float: left;
+        width: 0.10667rem;
+        z-index: 44;
+        background-image: radial-gradient(transparent 0, transparent 7px, #f0f3f8 2px);
+        background-size: 15px 8px;
+        background-position: 5px 18px;
+        position: relative;
+        &::before {
+          content: ' ';
+          display: block;
+          background-color: #f0f3f8;
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 0px;
+          right: 3px;
+          z-index: 0;
+        }
+      }
+      .groupright{
+        float: left;
+        background-color: #f6d989;
+        width: px2rem(228px);
+        height: 100%;
+        border-top-left-radius: px2rem(14px);
+        border-bottom-left-radius: px2rem(12px);
+        p{
+          display: block;
+          height: px2rem(50px);
+          padding-left:px2rem(20px);
+        }
+        p:nth-child(1){
+          font-size: px2rem(30px);
+          color:#303133;
+          height: px2rem(60px);
+          line-height: px2rem(80px);
+          border-bottom:0.5px solid #e3e3e3;
+        }
+        p:nth-child(2){
+          font-size: px2rem(28px);
+          color:#606266;
+          padding-top:px2rem(14px);
+        }
+        p:nth-child(3){
+          font-size: px2rem(28px);
+          color:#606266;
+          padding-top:px2rem(10px);
+        }
+      }
+      
+    }
+  }
+
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  .selectCard{
+    position: relative;
+    .van-checkbox{
+      margin:0 auto;
+      .van-checkbox__icon, .van-checkbox__label{
+        margin:px2rem(50px) px2rem(10px);
+        
+      }
+      
+    }
+  }
+</style>

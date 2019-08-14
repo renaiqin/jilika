@@ -1,0 +1,645 @@
+<template>
+  <div class="selectwarp">
+    <div @click="showpop" class="showweek clearfix">
+      <P>{{weekText}}</P>
+    </div>
+
+    <!-- 发卡记录为空时 -->
+    <!-- <div v-if="empty" class="cardwarp">
+      <img src="../../../../assets/empty.png" class="emptyimg"/>
+      <p class="emptyText">别让这里空着哟~</p>
+    </div>-->
+
+    <!-- 发卡记录不为空时 -->
+    <div class="cardwarp" ref="scrollBox" @scroll="watchScroll()">
+      <div
+        class="groupwarp"
+        :class="{'on_del':item.isOnDel}"
+        v-for="(item,index) in cardlist"
+        @click="cardDetail(item.jlid,item.xh)"
+        @touchstart="cardTouchStart($event,item)"
+        @touchmove="cardTouchMove($event,item)"
+        :key="index"
+      >
+        <img :src="(item.tplj?item.tplj:'/static/img/test1.png')" class="groupleft">
+        <div class="groupmid"></div>
+        <div class="groupright">
+          <p>获卡人：{{item.xm}}</p>
+          <p>评价人：{{item.ckrxm}}</p>
+          <p>日期：{{item.bfsj}}</p>
+        </div>
+        <div v-if="item.isOnDel" class="delcard" @click.stop="DelCard(item,index)">删除</div>
+      </div>
+    </div>
+    <div class="m_botRelease">
+      <div @click="renderPostcard" class="faka">发卡</div>
+    </div>
+
+    <!-- 选择周选择器 -->
+    <transition name="upinto">
+      <van-picker
+        v-if="isChangeWeek"
+        show-toolbar
+        title="选择时间"
+        :columns="weekList"
+        @cancel="onCancel"
+        @confirm="onConfirm"
+        class="f_week_picker"
+      />
+    </transition>
+
+    <!-- 卡片的详细信息的弹层 -->
+    <transition name="layer">
+      <div class="cardDetail" v-if="showpopup">
+        <div class="cardDetailRela">
+          <div class="popuptitle clearfix">
+            <p>记录详情</p>
+            <img src="../../../../assets/close.png" @click="close">
+          </div>
+          <div class="popupWarp">
+            <img class="cardimg" :src="cardDetailData.tplj">
+            <p class="detailP">
+              <span>获卡学生</span>
+              <span>{{cardDetailData.xm}}</span>
+            </p>
+            <p class="detailP">
+              <span>评价人</span>
+              <span>{{cardDetailData.ckrxm}}</span>
+            </p>
+            <p class="detailP">
+              <span>发卡日期</span>
+              <span>{{cardDetailData.bfsj}}</span>
+            </p>
+            <p class="detailP">
+              <span>卡片评语</span>
+              <span>{{cardDetailData.fkpy}}</span>
+            </p>
+            <div class="imgarr" v-if="cardDetailData.fjList">
+              <img
+                v-for="(item,index) in cardDetailData.fjList"
+                :key="index"
+                :src="item.sclj"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <div class="mask" v-if="isMask"></div>
+  </div>
+</template>
+
+<script>
+import { api } from "../../../../utils/Api/index";
+import { existsSync } from "fs";
+import _ from "lodash";
+export default {
+  name: "cardRecord",
+  data() {
+    return {
+      show: false, //是否显示底部选择周数
+      empty: false, //发卡记录是否为空
+      showpopup: false,
+      page: 1, //加载页数
+      refreshLoading: false, //刷新加载中
+      beginTime: "", //选择周数的开始时间
+      endTime: "", //选择周数的结束时间
+      cardDetailData: "", //获卡详情
+      cardlist: [],
+      imgArr: [], //图片链接
+      finished: false, //刷新是否完成
+      loading: false,
+      //////以下是新的变量///////
+      weekList: [], //底部周数数据,
+      weekText: "", //当前所选的周数值
+      isChangeWeek: false,
+      isMask: false,
+      isLoad: false,
+      maxPage: 0,
+      StartPosX: 0 //左滑的起点
+    };
+  },
+  mounted() {
+    this.init();
+  },
+  methods: {
+    /**
+     * 说明:初始化加载
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    async init() {
+      this.cardlist = [];
+      console.log("加载啦");
+      //获得周次列表
+      await this.getWeekList();
+      //获取卡片列表
+      this.queryPageList();
+    },
+    /**
+     * 说明:切换底部周数
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    showpop() {
+      //
+      this.isChangeWeek = true;
+      this.isMask = true;
+    },
+
+    /**
+     * 底部周数选择取消
+     */
+    onCancel() {
+      this.$nextTick(res => {
+        this.show = false;
+      });
+    },
+    /**
+     * 右滑删除发卡记录
+     */
+    onClose(clickPosition, instance) {
+      switch (clickPosition) {
+        case "left":
+        case "cell":
+        case "outside":
+          instance.close();
+          break;
+        case "right":
+          this.$dialog
+            .confirm({
+              message: "确定删除吗？"
+            })
+            .then(() => {
+              this.$fetch(api.reCallJlkData(), {
+                jlid: instance.$attrs.jlid,
+                xh: instance.$attrs.xh
+              });
+              this.list.forEach((item, index) => {
+                if (item.jlid == instance.$attrs.jlid) {
+                  this.list.splice(index, 1);
+                }
+              });
+              instance.close();
+            });
+          break;
+      }
+    },
+    /**
+     * 说明:查看卡片详细信息
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    async cardDetail(jlid, xh) {
+      var res = await this.$fetch(api.getInfo(), { jlid: jlid, xh: xh });
+      this.cardDetailData = res.data;
+      if (this.cardDetailData) {
+        this.isMask = true;
+        this.showpopup = true;
+      }
+    },
+    /**
+     * 说明:获得卡片列表
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    async queryPageList() {
+      if (!this.isLoad) {
+        //await
+        this.isLoad = true;
+        if (this.beginTime == "" || this.beginTime == null) {
+          this.beginTime = this.weekList[0].beginTime;
+          this.endTime = this.weekList[0].endTime;
+          this.weekText = this.weekList[0].text;
+        }
+        var res = await this.$post(
+          api.queryPageList(),
+          {
+            xxdm: localStorage.getItem("xxdm"),
+            xqdm: localStorage.getItem("xq"),
+            xndm: localStorage.getItem("xn"),
+            page: this.page,
+            limit: 10,
+            beginTime: this.beginTime,
+            endTime: this.endTime
+          },
+          { headers: "application/json" }
+        );
+        this.maxPage = Math.ceil(res.data.total / 10);
+        this.cardlist = this.cardlist.concat(res.data.rows);
+        // this.cardlist = res.data.rows;
+        this.isLoad = false;
+      }
+    },
+    /**
+     * 说明:上滑加载更多
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    watchScroll() {
+      if (
+        this.$refs.scrollBox.clientHeight +
+          this.$refs.scrollBox.scrollTop +
+          100 >
+        this.$refs.scrollBox.scrollHeight
+      ) {
+        if (!this.isLoad) {
+          this.page = this.page + 1;
+          if (this.page <= this.maxPage) {
+            this.queryPageList();
+          } else {
+            this.page = this.maxPage;
+          }
+        }
+      }
+    },
+
+    /**
+     * 说明:获得周次列表的方法
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    async getWeekList() {
+      var { data } = await this.$fetch(api.getWeekList(), {
+        schoolCode: localStorage.getItem("xxdm"),
+        yearCode: localStorage.getItem("xn"),
+        semesterCode: localStorage.getItem("xq")
+      });
+      console.log(data, 240);
+      this.weekList = [];
+
+      data.weekList.forEach(item => {
+        this.weekList.push({
+          text: `第` + item.weekNum + `周`,
+          beginTime: item.beginTime,
+          endTime: item.endTime,
+          val: item.weekNum
+        });
+      });
+      this.weekList.unshift({
+        text: "当前周",
+        beginTime: data.currentWeek.beginTime,
+        endTime: data.currentWeek.endTime,
+        val: data.currentWeek.weekNum
+      });
+      this.weekList.unshift({
+        text: "全部",
+        beginTime: null,
+        endTime: null,
+        val: data.currentWeek.weekNum
+      });
+      this.weekText = this.weekList[0].text;
+      //console.log(this.weekText)
+    },
+
+    onCancel() {
+      this.isChangeWeek = false;
+      this.isMask = false;
+    },
+    /**
+     * 说明:选择周数
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    onConfirm(e) {
+      console.log(e);
+      this.weekText = e.text;
+      this.beginTime = e.beginTime;
+      this.endTime = e.endTime;
+      this.cardlist = [];
+      this.page = 1;
+      this.queryPageList();
+
+      this.isChangeWeek = false;
+      this.isMask = false;
+    },
+
+    /**
+     * @description: 跳转到发卡页面
+     * @param {type}
+     * @return:
+     */
+    renderPostcard() {
+      this.$router.push({ path: "/pages/teacher/cardRecord/postCard" });
+    },
+    /**
+     * 说明:删除某张卡片
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async DelCard(item, index) {
+      try {
+        var res = await this.$fetch(api.reCallJlkData(), {
+          jlid: item.jlid,
+          xh: item.xh
+        });
+        this.$toast({ message: "删除成功", duration: 1000 });
+        //this.cardlist = _.reject(this.cardlist,{jlid:item.value});
+        this.cardlist.splice(index, 1);
+        // this.init();
+      } catch (e) {
+        this.$toast({ message: "删除失败", duration: 1000 });
+      }
+      console.log(res);
+    },
+    /**
+     * 说明:卡片详细信息弹层关闭
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    close() {
+      this.cardDetailData = null;
+      this.showpopup = false;
+      this.isMask = false;
+    },
+    /**
+     * 说明:卡片左移的事件
+     * 作者:RayJ
+     * 更新时间:2019-03-17
+     */
+    cardTouchStart(e, item) {
+      // console.log(e)
+      this.StartPosX = e.targetTouches[0].pageX;
+    },
+    cardTouchMove(e, item) {
+      // console.log(e,344)
+      if (this.StartPosX - e.targetTouches[0].pageX > 100) {
+        this.$set(item, "isOnDel", true);
+      } else if (e.targetTouches[0].pageX - this.StartPosX > 100) {
+        this.$set(item, "isOnDel", false);
+      }
+    }
+  }
+};
+</script>
+
+<style scoped lang="scss">
+@import "../../../../style/style.scss";
+body {
+  background-color: #fff !important;
+  position: relative;
+}
+.upinto-enter-active {
+  animation-name: fadeInUp;
+  animation-duration: 0.5s;
+}
+.layer-enter-active {
+  animation-name: fadeInRight;
+  animation-duration: 0.5s;
+}
+.layer-leave-active {
+  animation-name: fadeOutLeft;
+  animation-duration: 0.5s;
+}
+.selectwarp {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  .showweek {
+    width: 100%;
+    height: px2rem(88px);
+    box-shadow: 0px 0.1px 18px #f4f6fa;
+    border-bottom: 1px solid #e6e6e6;
+    font-size: px2rem(32px);
+    color: #303133;
+    display: block;
+    text-align: center;
+    p {
+      display: inline-block;
+      height: 100%;
+      background: url(../../../../assets/weekicon.png) no-repeat left center;
+      background-size: auto 50%;
+      padding-left: px2rem(55px);
+      line-height: px2rem(88px);
+    }
+    .weekicon {
+      width: px2rem(40px);
+      float: left;
+      margin-left: 40%;
+      margin-top: px2rem(20px);
+    }
+  }
+  .cardwarp {
+    // padding-top:px2rem(20px);
+    padding: 0 px2rem(32px);
+    flex: 1;
+    overflow: auto;
+    overflow-x: hidden;
+    // padding-bottom:px2rem(100px);
+    .van-list {
+      overflow: inherit;
+    }
+    .groupwarp {
+      margin-top: px2rem(20px);
+      height: px2rem(160px);
+      float: left;
+      position: relative;
+      transition: 0.2s all;
+      .groupleft {
+        width: px2rem(344px);
+        float: left;
+        height: 100%;
+        border-radius: px2rem(20px) 0 0 px2rem(20px);
+        overflow: hidden;
+      }
+      .groupmid {
+        height: 100%;
+        float: left;
+        width: px2rem(8px);
+        z-index: 44;
+        margin-left: -0.07rem;
+        background-image: radial-gradient(
+          transparent 0,
+          transparent 5px,
+          #f0f3f8 3px
+        );
+        background-size: 15px 8px;
+        background-position: 6px 14px;
+        position: relative;
+        &::before {
+          content: " ";
+          display: block;
+          background-color: #f0f3f8;
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          left: 6px;
+          right: -5px;
+          z-index: 0;
+        }
+      }
+      .groupright {
+        float: left;
+        background-color: #f0f3f8;
+        width: px2rem(336px);
+        height: 100%;
+        border-top-right-radius: px2rem(20px);
+        border-bottom-right-radius: px2rem(20px);
+        p {
+          display: block;
+          height: px2rem(50px);
+          padding-left: px2rem(20px);
+        }
+        p:nth-child(1) {
+          font-size: px2rem(30px);
+          color: #303133;
+          height: px2rem(60px);
+          line-height: px2rem(60px);
+          border-bottom: 0.5px solid #e3e3e3;
+        }
+        p:nth-child(2) {
+          font-size: px2rem(28px);
+          color: #606266;
+          padding-top: px2rem(14px);
+        }
+        p:nth-child(3) {
+          font-size: px2rem(28px);
+          color: #606266;
+          padding-top: px2rem(10px);
+        }
+      }
+      .delcard {
+        width: px2rem(100px);
+        height: px2rem(160px);
+        background: #ff3b30;
+        position: absolute;
+        right: px2rem(-80px);
+        top: 0;
+        font-size: px2rem(30px);
+        text-align: center;
+        line-height: px2rem(160px);
+        color: #fff;
+      }
+    }
+    .groupwarp.on_del {
+      transform: translateX(-22px);
+    }
+  }
+  .faka {
+    position: fixed;
+    width: px2rem(640px);
+    height: px2rem(90px);
+    border-radius: px2rem(45px);
+    background: #3e81ff;
+    font-size: px2rem(36px);
+    color: #fff;
+    line-height: px2rem(90px);
+    text-align: center;
+    bottom: px2rem(20px);
+    left: px2rem(55px);
+  }
+  .emptyimg {
+    width: px2rem(700px);
+    margin: px2rem(230px) auto px2rem(30px) auto;
+  }
+  .emptyText {
+    color: #606266;
+    text-align: center;
+    font-size: px2rem(30px);
+  }
+  .van-actionsheet {
+    height: px2rem(500px);
+  }
+}
+.imgarr {
+  margin-left: px2rem(170px);
+  img {
+    width: px2rem(115px);
+    height: px2rem(115px);
+    margin-top: px2rem(10px);
+    margin-right: px2rem(5px);
+  }
+}
+.van-swipe-cell {
+  margin-top: px2rem(30px);
+}
+.van-swipe-cell__right {
+  span {
+    font-size: px2rem(30px);
+    text-align: center;
+    background-color: #ff3b30;
+    color: #fff;
+    display: inline-block;
+    height: px2rem(160px);
+    line-height: px2rem(160px);
+    width: px2rem(140px);
+    margin-left: px2rem(2px);
+  }
+}
+.f_week_picker {
+  z-index: 550;
+  position: fixed;
+  width: 100%;
+  bottom: 0;
+}
+.m_botRelease {
+  height: px2rem(130px);
+  background: #fff;
+  width: 100%;
+}
+.cardDetail {
+  width: px2rem(600px);
+  padding-bottom: px2rem(30px);
+  border-radius: px2rem(30px);
+  background: #fff;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin-top: px2rem(-350px);
+  margin-left: px2rem(-300px);
+  z-index: 550;
+  min-height: px2rem(700px);
+  .cardDetailRela{
+    position: relative;
+    height: px2rem(100px);
+  }
+  .popupWarp{
+      position: absolute;
+      top:px2rem(100px);
+      left:px2rem(25px);
+      height: px2rem(600px);
+      overflow-y: scroll;
+  }
+  .popuptitle {
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    p {
+      float: left;
+      color: #303133;
+      font-size: px2rem(34px);
+      padding: px2rem(30px);
+      font-weight: 600;
+    }
+    img {
+      width: px2rem(30px);
+      height: px2rem(30px);
+      float: right;
+      margin-right: px2rem(30px);
+      margin-top: px2rem(30px);
+    }
+  }
+  .cardimg {
+    width: px2rem(550px);
+    margin: 0 auto;
+    display: block;
+    border-radius: px2rem(30px);
+  }
+  .detailP {
+    span:nth-child(1) {
+      color: #606266;
+      font-size: px2rem(30px);
+      padding-left: px2rem(30px);
+      width: px2rem(180px);
+      display: inline-block;
+    }
+    span:nth-child(2) {
+      color: #000;
+      font-size: px2rem(30px);
+    }
+  }
+}
+</style>

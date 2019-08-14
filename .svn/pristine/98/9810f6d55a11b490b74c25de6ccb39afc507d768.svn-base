@@ -1,0 +1,651 @@
+
+<template>
+  <div class="warp">
+    <div class="top">
+      <p>{{schoolName}}</p>
+      <img src="../../../assets/banner.png">
+    </div>
+    <!-- <div class="tip clearfix">
+      <img src="../../../assets/tongzhi.png" />
+      <p class="tipP">设置常用班级，发卡更简便！</p>
+      <p class="notip">不在提醒</p>
+    </div>-->
+
+    <div class="hengwarp clearfix">
+      <img src="../../../assets/heng.png">
+      <p>欢迎{{truename}}同学</p>
+    </div>
+
+    <div class="gongneng">
+      <van-row gutter="20">
+        <router-link v-if="findqx('jlk005') != -1" to="/pages/student/cardsList/cardsRecord">
+          <van-col span="6">
+            <div class="gong-1">
+              <img src="../../../assets/fk.png">
+            </div>
+            <p>发卡</p>
+          </van-col>
+        </router-link>
+        <router-link v-if="findqx('jlk006') != -1" to="/pages/student/cardsList/cardsList">
+          <van-col span="6">
+            <div class="gong-2">
+              <img src="../../../assets/hk.png">
+            </div>
+            <p>获卡</p>
+          </van-col>
+        </router-link>
+        <router-link v-if="findqx('jlk007') != -1" to="/pages/student/rankingList/rankingHome">
+          <van-col span="6">
+            <div class="gong-3">
+              <img src="../../../assets/lyb.png">
+            </div>
+            <p>琅琊榜</p>
+          </van-col>
+        </router-link>
+        <router-link v-if="findqx('jlk008') != -1" to="/pages/student/dynamic/index">
+          <van-col class="dtNumWarp"  span="6">
+            <div class="gong-4">
+              <img src="../../../assets/dt.png">
+              <span v-if="dtNum != 0 && dtNum != '0'" class="dtNum">{{dtNum}}</span>
+
+            </div>
+            <p>动态</p>
+          </van-col>
+        </router-link>
+      </van-row>
+    </div>
+
+    <div class="grayline"></div>
+
+    <div class="getcard">
+      <div class="cardtitle clearfix">
+        <p class="cardleft">最新获卡</p>
+        <p class="cardright more" v-if="findqx('jlk005') != -1" @click="renderCardRecord">更多</p>
+      </div>
+      <div class="cardmain" >
+        <van-row gutter="30" v-if="newFaka.length > 0">
+          <van-col span="12" v-for="(item,index) in newFaka" v-if="index<2" :key="index">
+            <div>
+              <img :src="item.tplj">
+            </div>
+            <p>评价人：{{item.ckrxm}}</p>
+            <p>{{item.bfsj}}</p>
+          </van-col>
+        </van-row>
+        <van-row v-else gutter="20">
+          <p class="tipsP">无最新获卡哦~</p>
+        </van-row>
+      </div>
+     
+    </div>
+
+    <div class="grayline"></div>
+
+    <div class="getcard">
+      <div class="cardtitle clearfix">
+        <p class="cardleft">琅琊榜榜主</p>
+        <p class="cardright more" v-if="findqx('jlk007') != -1" @click="renderRanking">更多</p>
+      </div>
+      <div class="bangmain">
+        <van-row gutter="20" v-if="lybData.length != 0">
+          <van-col span="8" v-for="(item,index) in lybData" :key="index">
+            <div>
+              <div class="userInfo">
+                <img :src="item.headshot" />
+                <p>{{item.xm}}</p>
+                <p>{{item.bjmc}}</p>
+              </div>
+              <p class="cardNum">{{item.kpsl}}</p>
+            </div>
+          </van-col>
+         
+        </van-row>
+        <van-row v-else gutter="20">
+          <p class="tipsP">无榜主信息哦~</p>
+        </van-row>
+      </div>
+    </div>
+
+    <div class="grayline"></div>
+
+   <div class="getcard">
+      <div class="cardtitle clearfix">
+        <p class="cardleft">班级动态</p>
+        
+      </div>
+      <div class="dongtaimain" v-if="classDt.length != 0">
+        <div class="dongtaiLi" v-for="(item,index) in classDt" :key="index">
+          <div class="viainfo clearfix">
+            <div class="via"> <img :src="item.xb == 2 ? '/static/img/gril.png' : '/static/img/boy.png'"/></div>
+            <div class="name">
+              <p>{{item.xm}}</p>
+              <p>{{item.fbdtsj}}</p>
+            </div>
+          </div>
+          <p class="dongtaicontent">{{item.fbnr}}</p>
+          <p class="cardType">{{item.kplxmc}}</p>
+        </div>
+      </div>
+      <div class="dongtaimain" v-else>
+        <p class="tipsP">班级动态尚未发布哦~</p>
+      </div>
+      
+    </div>
+  </div>
+</template>
+
+<script>
+import { api } from "../../../utils/Api/index";
+import { promises } from "fs";
+export default {
+  name: "home",
+  data() {
+    return {
+      show: false, //是否显示设置常用班级弹层
+      userinfo: "", //用户信息
+      newFaka: [], //最新发卡
+      truename: "", //当前登录的学生
+      qxlist: [], //学生权限数组
+      lybData:[],//琅琊榜信息
+      classDt:[],//班级动态
+      dtNum:0,
+      schoolName:''
+    };
+  },
+  methods: {
+    changeClass() {
+      this.show = true;
+    },
+    beforeClose(action, done) {
+      if (action === "confirm") {
+        setTimeout(done, 1000);
+      } else {
+        done();
+      }
+    },
+    saveSet() {
+      //点击保存设置的常用班级
+    },
+    close() {
+      this.show = false;
+    },
+
+    /**
+     * @description: 获取最近卡片  发卡或获卡
+     * @param {type}
+     * @return:
+     */
+    async getMyKpxxList() {
+      let that = this;
+      window.localStorage.setItem("istoken", true);
+      this.$fetch(api.getMyKpxxList(), {
+        userid: localStorage.getItem("xh"),
+        usertype: localStorage.getItem("usertype"),
+        xxdm: localStorage.getItem("xxdm")
+      }).then(res=>{
+
+        this.newFaka = res.data.length <= 2 ? res.data : res.data.slice(0, 2);
+      });
+    },
+
+    /**
+     * @description: 查询琅琊榜榜主
+     * @param {type}
+     * @return:
+     */
+    async getTopKpxxList() {
+      this.$post(
+        api.getTopKpxxList(),
+        {
+          xh: localStorage.getItem("xh"),
+          xxdm: localStorage.getItem("xxdm"),
+          xndm:localStorage.getItem('xn'),
+          xqdm:localStorage.getItem('xq'),
+          xxdm:localStorage.getItem('xxdm')
+        },
+        { headers: "application/json" }
+      ).then(res=>{
+
+        this.lybData = res.data;
+      });
+    },
+
+    /**
+     * @description: 跳转到获卡页面
+     * @param {type}
+     * @return:
+     */
+    renderCardRecord() {
+      this.$router.push("/pages/student/cardsList/cardsList");
+    },
+    /**
+     * 首页权限的显示
+     */
+    async qxlistFun() {
+      this.$fetch(api.qxlist(), {
+        xxdm: localStorage.getItem("xxdm")
+      }).then(res=>{
+
+        res.data.forEach((item, index) => {
+          if (item.ydgnlx == 2) {
+            this.qxlist.push(item);
+          }
+        });
+        this.qxlist = res.data;
+      });
+    },
+    /**
+     * 查询是否有权限
+     * raq
+     */
+    findqx(key) {
+      let index = this.qxlist.findIndex(item => {
+        return item.ydgndm == key;
+      });
+      return index;
+    },
+    /* 
+     跳转到琅琊榜
+    */
+    renderRanking(){
+      this.$router.push('/pages/student/rankingList/rankingHome');
+    },
+    /**
+     * @description: 查询最新班级动态
+     * @param {type} 
+     * @return: 
+     */
+    async getXxdtList(){
+      this.$fetch(api.getXxdtList(),{xxdm:localStorage.getItem('xxdm'),userid: localStorage.getItem('xh'),usertype:localStorage.getItem('usertype'),classCode:''}).then(res=>{
+
+        this.classDt = res.data.content.length <= 15 ? res.data.content : res.data.content.slice(0,15);
+      });
+    },
+    async getXxdtNum(){
+      let user;
+      let usertype =localStorage.getItem('usertype');
+      this.$fetch(api.getXxdtNum(),{xxdm:localStorage.getItem('xxdm'),userid: localStorage.getItem("xh"),usertype:usertype}).then(res=>{
+
+        this.dtNum = res.data;
+      });
+    },
+  },
+  mounted() {
+    let that = this;
+    //获取最新发卡
+    //
+    this.schoolName = localStorage.getItem('xxmc');
+    this.truename = localStorage.getItem("truename");
+    Promise.all([this.qxlistFun(),this.getTopKpxxList(),this.getMyKpxxList(),this.getXxdtList(),this.getXxdtNum()]);
+  }
+};
+</script>
+
+<style scoped lang="scss">
+@import "../../../style/style.scss";
+.flod-enter-active {
+  animation-name: fadeInRight;
+  animation-duration: 0.5s;
+}
+.warp {
+  width: 100%;
+  height: 100%;
+  .tipsP{
+      font-size: px2rem(30px);
+      padding-left:px2rem(30px);
+      padding-bottom:px2rem(60px);
+      padding-top:px2rem(40px);
+    }
+  .top {
+    width: 100%;
+    height: px2rem(350px);
+    position: relative;
+    img {
+      width: 100%;
+    }
+    p{
+        position: absolute;
+        left: px2rem(95px);
+        top:px2rem(130px);
+        color:#0f0629;
+        font-size: px2rem(34px)
+      }
+  }
+  .tip {
+    width: px2rem(688px);
+    height: px2rem(53px);
+    background-color: #f0f3f8;
+    border-radius: px2rem(30px);
+    margin: px2rem(40px) auto;
+    overflow: hidden;
+    display: block;
+    img {
+      width: px2rem(34px);
+      height: px2rem(30px);
+      margin: px2rem(12px) px2rem(20px);
+      display: block;
+      float: left;
+    }
+    p {
+      float: left;
+      line-height: px2rem(53px);
+    }
+    .tipP {
+      color: #999;
+      line-height: px2rem(56px);
+      margin-right: px2rem(50px);
+      font-size: px2rem(26px);
+    }
+    .notip {
+      color: #3e81ff;
+      font-size: px2rem(23px);
+      margin-right: px2rem(30px);
+      float: right;
+    }
+  }
+  .hengwarp {
+    position: relative;
+    width: 100%;
+    margin-top: px2rem(40px);
+    p {
+      width: px2rem(260px);
+      height: px2rem(40px);
+      text-align: center;
+      line-height: px2rem(40px);
+      font-size: px2rem(28px);
+      margin: 0 auto;
+    }
+    img {
+      margin: px2rem(20px) auto;
+      display: block;
+      width: px2rem(589px);
+      position: absolute;
+      top: px2rem(0px);
+      left: px2rem(70px);
+    }
+  }
+  .gongneng {
+    width: 90%;
+    margin: px2rem(50px) auto;
+    .gong-1,
+    .gong-2,
+    .gong-3,
+    .gong-4 {
+      width: px2rem(88px);
+      height: px2rem(88px);
+      margin: px2rem(20px) auto;
+      img {
+        width: px2rem(88px);
+        height: px2rem(88px);
+      }
+    }
+    p {
+      text-align: center;
+      color: #303133;
+      font-size: px2rem(32px);
+      font-weight: 600;
+    }
+  }
+  .grayline {
+    width: 100%;
+    background-color: #eff1f3;
+    height: px2rem(20px);
+  }
+  .getcard {
+    width: 100%;
+    padding: 0 px2rem(32px);
+    display: block;
+    .cardtitle {
+      width: 100%;
+      height: px2rem(100px);
+      line-height: px2rem(100px);
+      // margin-top:px2rem(50px);
+      // margin-bottom:px2rem(40px);
+      p {
+        font-size: px2rem(34px);
+      }
+      .cardleft {
+        float: left;
+        color: #303133;
+        font-weight: 600;
+      }
+      .cardright {
+        float: right;
+        color: #909399;
+        img {
+          width: px2rem(30px);
+        }
+      }
+      .cardright.more {
+        background: url(../../../assets/arrow_right.png) no-repeat right center;
+        background-size: auto 35%;
+        font-size: px2rem(30px);
+        padding-right: px2rem(30px);
+      }
+      .cardright.change {
+        background: url(../../../assets/changeicon.png) no-repeat right center;
+        background-size: auto 30%;
+        font-size: px2rem(30px);
+        padding-right: px2rem(45px);
+      }
+    }
+    .cardmain {
+      .van-col {
+        div {
+          width: 100%;
+          height: px2rem(150px);
+          background-color: #999;
+          border-radius: px2rem(10px);
+          overflow: hidden;
+          img {
+            width: 100%;
+            height: 100%;
+          }
+        }
+        p:nth-child(2) {
+          color: #606266;
+          font-size: px2rem(28px);
+          margin-top: px2rem(20px);
+          margin-bottom: px2rem(20px);
+        }
+        p:nth-child(3) {
+          color: #909399;
+          font-size: px2rem(18px);
+          margin-bottom: px2rem(50px);
+        }
+      }
+    }
+    .bangmain {
+      .van-col {
+        .userInfo {
+          float: left;
+          padding-top: px2rem(60px);
+          padding-left: px2rem(20px);
+          width: px2rem(100px);
+          img {
+            width: px2rem(50px);
+            height: px2rem(50px);
+          }
+          p:nth-child(2) {
+            font-size: px2rem(28px);
+            color: #fff;
+          }
+          p:nth-child(3) {
+            font-size: px2rem(24px);
+            color: #fff;
+            padding-top: px2rem(20px);
+          }
+        }
+        .cardNum {
+          font-size: px2rem(28px);
+          float: left;
+        }
+      }
+      .van-col:nth-child(1) {
+        div {
+          width: px2rem(208px);
+          height: px2rem(214px);
+          margin-bottom: px2rem(50px);
+          background-image: url("../../../assets/1bg.png");
+          background-size: 100% 100%;
+        }
+      }
+      .van-col:nth-child(2) {
+        div {
+          width: px2rem(208px);
+          height: px2rem(214px);
+          margin-bottom: px2rem(50px);
+          background-image: url("../../../assets/2bg.png");
+          background-size: 100% 100%;
+        }
+      }
+      .van-col:nth-child(3) {
+        div {
+          width: px2rem(208px);
+          height: px2rem(214px);
+          margin-bottom: px2rem(50px);
+          background-image: url("../../../assets/3bg.png");
+          background-size: 100% 100%;
+        }
+      }
+    }
+    .dongtaimain {
+      .dongtaiLi {
+        border-bottom: px2rem(2px) solid #eaeaea;
+        padding: px2rem(30px) 0;
+      }
+      .viainfo {
+        .via {
+          width: px2rem(64px);
+          height: px2rem(64px);
+          border-radius: 50%;
+          background-color: #909399;
+           img{
+            width: 100%;
+            height: 100%;
+          }
+        }
+        .via,
+        .name {
+          float: left;
+         
+        }
+        .name {
+          margin-left: px2rem(30px);
+          p:nth-child(1) {
+            color: #303133;
+            font-size: px2rem(29px);
+          }
+          p:nth-child(2) {
+            color: #909399;
+            font-size: px2rem(18px);
+            line-height: px2rem(50px);
+            height: px2rem(50px);
+          }
+        }
+      }
+     
+      .dongtaicontent {
+        color: #303133;
+        font-size: px2rem(28px);
+        line-height: 1.4em;
+      }
+    }
+    .solidline {
+      width: 100%;
+      height: px2rem(2px);
+      background-color: #eaeaea;
+      margin: px2rem(40px) auto;
+    }
+  }
+  .fade {
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    position: fixed;
+    top: 0;
+    left: 0;
+    .showChange {
+      width: px2rem(600px);
+      background-color: #fff;
+      border-radius: px2rem(20px);
+      margin: px2rem(200px) auto;
+      .showtop {
+        p {
+          font-size: px2rem(34px);
+          font-weight: 600;
+          padding: px2rem(20px);
+          float: left;
+        }
+        .close {
+          width: px2rem(30px);
+          float: right;
+          margin: px2rem(20px);
+        }
+      }
+    }
+    .classmain {
+      margin: px2rem(20px);
+      height: 100%;
+
+      .classtitle {
+        font-size: px2rem(32px);
+        margin-left: px2rem(34px);
+        color: #000;
+      }
+      .tags {
+        width: px2rem(240px);
+        text-align: center;
+        font-size: px2rem(26px);
+        font-family: "PingFang-SC-Bold";
+        margin-top: px2rem(20px);
+        border-radius: px2rem(30px);
+      }
+      .saveset {
+        width: px2rem(520px);
+        height: px2rem(88px);
+        background-color: #3e81ff;
+        color: #fff;
+        font-size: px2rem(34px);
+        line-height: px2rem(88px);
+        text-align: center;
+        border-radius: px2rem(40px);
+        margin: px2rem(30px) auto;
+      }
+      .classwarp {
+        margin: px2rem(30px);
+      }
+    }
+  }
+  .dongtaicontent{
+    color:#303133;
+    font-size: px2rem(28px);
+    line-height:px2rem(40px);
+  }
+  .cardType{
+    font-size: px2rem(28px);
+    color:#909399;
+    line-height: px2rem(50px);
+  }
+  .dtNumWarp{
+    position: relative;
+    .dtNum{
+      position: absolute;
+      width: px2rem(40px);
+      height: px2rem(40px);
+      background-color: #ff3b30;
+      top: px2rem(20px);
+      right:px2rem(30px);
+      text-align: center;
+      line-height: px2rem(40px);
+      color:#fff;
+      font-size: px2rem(26px);
+      border-radius: 50%;
+    }
+  }
+}
+</style>
+
+<style lang="scss">
+@import "../../../style/style.scss";
+</style>

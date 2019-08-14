@@ -1,0 +1,1245 @@
+<template>
+  <div class="selectwarp">
+    <!-- 选择年级  班级  学生模块 -->
+    <div class="fade" v-if="loading">
+        <van-loading />
+    </div>
+    <div class="m_pad30" v-if="showType != 2">
+      <div class="searchbox">
+        <input
+          type="search"
+          @change="searchsubmit"
+          v-model="searchVal"
+          class="searchipt"
+          ref="searchipt"
+        >
+        <img src="/static/img/dot-cleartxt.png" @click="clearSearch">
+        <div class="searchNone" v-show="isSearchIn" @click="searchTeacher">
+          <div class="holder">搜索</div>
+        </div>
+      </div>
+    </div>
+    <div class="showType" id="showType" v-if="showType == 1">
+      <div class="tabs clearfix">
+        <p :class="{'blue':isall}" @click="changelevels(1)">全部</p>
+        <van-icon name="arrow" v-if="(type == 2 || type == 3) && gradeName != ''"/>
+        <p
+          :class="{'blue':isgrade}"
+          v-if="(type == 2 || type == 3) && gradeName != ''"
+          @click="changelevels(2)"
+        >{{gradeName}}</p>
+        <van-icon name="arrow" v-if="type == 3"/>
+        <p :class="{'blue':isclass}" v-if="type == 3">{{className}}</p>
+      </div>
+
+      <!-- 常用班级 -->
+      <div v-if="type == 1">
+        <div class="selectTitle" v-if="showCy">常用班级</div>
+        <ul class="checkList">
+          <li
+            v-for="(item,index) in classList"
+            v-if="item.cybj == true"
+            v-on:click="chooseClass(item,true)"
+          >
+            <div class="selState" :class="{'on':item.check}" @click.stop="checkAll(item,'bj',true)"></div>
+            <div class="teachname">{{item.bj}}</div>
+            <div class="f_rightArrow" v-if="item.uuid!=0&&!item.check"></div>
+          </li>
+        </ul>
+
+        <div class="selectTitle">全部年级</div>
+        
+        <ul class="checkList">
+          <li v-for="(item,index) in gradeList" v-on:click="chooseGrade(item,index)">
+            <div class="selState" :class="{'on':item.check}" @click.stop="checkAll(item,'nj')"></div>
+            <div class="teachname">{{item.njmc}}</div>
+            <div class="f_rightArrow" v-if="!item.check"></div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 班级模块 -->
+      <div v-if="type == 2">
+        <ul class="checkList">
+          <li
+            v-for="(item,index) in classList"
+            v-if="curNjDm==item.njdm||item.uuid==0"
+            v-on:click="chooseClass(item,false)"
+          >
+            <div class="selState" :class="{'on':item.check}" @click.stop="checkAll(item,'bj')"></div>
+            <div class="teachname">{{item.bj}}</div>
+            <div class="f_rightArrow" v-if="item.uuid!=0&&!item.check"></div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- 学生模块 -->
+      <div class="studentWarp" v-if="type == 3">
+        <div class="studentListMain">
+          <dl class>
+            <div v-for="(item,index) in studentList">
+              <dt>{{item.name}}</dt>
+              <dd v-for="(sitem,index) in item.items" @click="checkStudent(sitem)">
+                <div class="selState" :class="{'on':sitem.check}"></div>
+                <div class="teachname">{{sitem.xm}}</div>
+                <div class="f_rightArrow" v-if="item.uuid!=0"></div>
+                
+              </dd>
+            </div>
+          </dl>
+
+          <div class="letterAside">
+            <li v-for="(item,index) in studentList" @click="letterJump(item.name)">{{item.name}}</li>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 选择后展示所选学生页面 -->
+    <div class="showstudent" v-if="showType == 2">
+      <div
+        class="showstudentBottom"
+        v-if="selectAllGrade.length != 0 || selectAllClass.length != 0 || selecdStudent.length != 0"
+      >
+        <div class="classCell">
+         
+          <van-cell v-for="(item,index) in selectAllClass" :key="index.uuid">
+            <template slot="title">
+              <div class="viainfo clearfix">
+                <div class="name bj">
+                  <p>
+                    {{item.bj}}
+                    <span>({{item.count}}人)</span>
+                  </p>
+                </div>
+                <van-icon
+                  slot="right-icon"
+                  name="close"
+                  class="close"
+                  @click="delSelectAllClass(item,index)"
+                />
+              </div>
+            </template>
+          </van-cell>
+        </div>
+
+        <van-cell v-for="(item,index) in selecdStudent" :key="index">
+          <template slot="title">
+            <div class="viainfo clearfix">
+              <div class="via">
+                <img :src="item.xbm == 2 ? '/static/img/gril.png' : '/static/img/boy.png'">
+              </div>
+              <div class="name">
+                <p>{{item.xm}}</p>
+                <p>{{item.bjmc}}</p>
+              </div>
+              <van-icon
+                slot="right-icon"
+                name="close"
+                class="close"
+                @click="delSelecdStudent(item,index)"
+              />
+            </div>
+          </template>
+        </van-cell>
+      </div>
+      <div class="showstudentBottom" v-else>
+        <img src="../../../assets/empty.png" class="emptyimg">
+        <p class="emptyText">暂无已选内容~</p>
+      </div>
+      <div class="queding" @click="showchoose">返回</div>
+    </div>
+    <div class="checkList searchList" v-if="showType == 3">
+      <ul>
+        <li v-for="(item,index) in searchList">
+          <div class="selState" :class="{'on':item.check}" @click.stop="changeCheck(item,index)"></div>
+          <div class="teachname">{{item.xm}}</div>
+          <div class="teachname">({{item.bjmc}})</div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="choosenum" v-if="showType != 2">
+      <p @click="checknum">已选{{choosenum}}人</p>
+      <p @click="renderpostCard">完成</p>
+    </div>
+  </div>
+</template>
+
+<script>
+import { api } from "../../../utils/Api/index";
+import _ from "lodash";
+import { promises } from "fs";
+export default {
+  name: "selectStudent",
+  data() {
+    return {
+      title: "Current City: BEIJING",
+      searchvalue: "", //搜索值
+      gradeName: "一年级", //年级值
+      className: "5班", //班级值
+      isall: false, //是否点击全部
+      isgrade: false, //是否选择年级
+      isclass: false, //是否选择班级
+      classAll: false, //班级全选
+      type: 1, //1 全部  2 年级  3  班级
+      choosenum: 0, //已选人数
+      showType: 1, //1 选择年级  班级  学生模块  2 选择后展示所选学生页面  3  搜索页面
+      studentvalue: "", //搜索页面   搜索的值
+      // commClass: [], //常用班级
+      gradeList: [], //年级数组
+      classList: [], //班级数组
+      curNjDm: "", //选中的年级代码
+      studentList: [], //学生列表
+      isSearchIn: true,
+      selecdStudent: [], //已选中的学生列表
+      selectAllClass: [], //全选的班级列表
+      selectAllGrade: [], //全选的年级列表
+      searchVal: "", //搜索内容
+      searchList: [], //搜索学生数组
+      qxbj: [],
+      loading:true,
+      selectCard:'',//选中的卡片
+      showCy:false,//是否展示常用班级
+    };
+  },
+  mounted() {
+    //获取已选中的学生数组
+    this.selecdStudent = this.$store.getters.getSelectStudent;
+    this.selectAllClass = this.$store.getters.getSelectAllClass;
+    this.selectAllGrade = this.$store.getters.getSelectAllGrade;
+    this.selectCard = this.$store.getters.getSelectCard.constructor == Array ? this.$store.getters.getSelectCard[0] : this.$store.getters.getSelectCard;
+   //console.log(this.selectCard,this.$store.getters.getSelectCard[0],89898989)
+    var that = this;
+    //console.log(this.selectAllClass,this.selectAllGrade,565656)
+    Promise.all([this.selectNjList(), this.selectBjListByJbxn()])
+      .then(function(result) {
+        that.init();
+      })
+      .catch(error => {
+        //that.tipsXX("数据初始化出错,刷新后再试","error")
+      });
+  },
+  methods: {
+    
+    async init() {
+      this.choosenum = this.choosenum + this.selecdStudent.length;
+      for (var i = 0; i < this.selectAllClass.length; i++) {//已选班级 得出已选人数
+        this.choosenum = this.choosenum + this.selectAllClass[i].count;
+      }
+      this.gradeList.forEach((item, index) => {//设置已选年级的选中状态
+        var temp = _.filter(this.selectAllGrade, { njdm: item.njdm });
+        if (temp.length > 0) {
+          this.$set(this.gradeList[index], "check", true);
+        } else {
+          this.$set(this.gradeList[index], "check", false);
+        }
+      });
+      
+      this.classList.forEach((item, index) => {//设置已选班级的选中状态
+        var temp = _.filter(this.selectAllClass, { uuid: item.uuid });
+        if (temp.length > 0) {
+          this.$set(this.classList[index], "check", true);
+        } else {
+          this.$set(this.classList[index], "check", false);
+        }
+        this.$set(this.classList[index], "checkNum", 0);
+      });
+
+
+      this.selecdStudent.forEach((item, index) => {//查找该班级是否为全选
+        var temp = _.find(this.classList, function(o){
+          return o.uuid == item.bjdm
+        });
+        if (temp != '') {
+          this.$set(temp, "checkNum", temp.checkNum+1);
+        }
+      });
+      let that = this
+      _.forEach(this.classList,function(o){//如果班级里的学生是全选  那设置该班级的选中状态
+        if(o.count == o.checkNum && o.count != 0){
+          that.$set(o, "check", true);
+        }
+      })
+    },
+    /**
+     * 点击title 切换面板
+     * type 1 全部  2 年级  3  班级
+     */
+    changelevels(type) {
+      let that = this;
+      that.type = type;
+      switch (type) {
+        case 1: //全部
+          that.isall = true;
+          that.isgrade = false;
+          that.isclass = false;
+          break;
+        case 2: //年级
+          that.isall = true;
+          that.isgrade = false;
+          that.isclass = false;
+          that.mergeClassStudent();
+          break;
+        case 3: //班级
+          that.isall = true;
+          that.isgrade = true;
+          that.isclass = true;
+          break;
+        default:
+          break;
+      }
+    },
+    /**
+     * 全部面板里选择年级
+     */
+    chooseGrade(item) {
+      if (item.check) {
+        return;
+      }
+      this.type = 2;
+      this.gradeName = item.njmc;
+      this.curNjDm = item.njdm;
+      //console.log(this.classList,666)
+    },
+    /**
+     * 年级面板里选择班级
+     * iscy 是否从常用班级点击进入
+     */
+    chooseClass(item, iscy) {
+      if (item.check) {
+        return;
+      }
+      this.type = 3;
+      this.isall = true;
+      this.isgrade = true;
+      this.isclass = false;
+      //console.log(item)
+      // console.log(item,iscy,44555)
+      if (iscy) {
+        this.className = item.bj;
+        this.gradeName = "";
+      } else {
+        this.className = item.bj;
+      }
+      //console.log(item)
+      this.gettBjxsAll(item.uuid ? item.uuid : item.bjdm);
+    },
+    /**
+     * 点击已选人数跳转到查看已选页面
+     * */
+
+    checknum() {
+      this.mergeClassStudent();
+      this.showType = 2;
+    },
+    /**
+     * 返回选择学生页面
+     */
+    showchoose() {
+      this.showType = 1;
+    },
+    /**
+     * 选择学生页面点击搜索
+     */
+    searchfous() {
+      this.showType = 3;
+    },
+    /**
+     * @description: 获取常用班级
+     * @param {type}
+     * @return:
+     */
+    getCybjList() {
+      let that = this;
+      that
+        .$fetch(api.getCybjList(), {
+          zgh: localStorage.getItem("zgh"),
+          xxdm: localStorage.getItem("xxdm"),
+          xndm: localStorage.getItem("xn")
+        })
+        .then(res => {
+          // = ;
+          // console.log(res.data,777888)
+          let tempNum = 0;
+          this.classList.forEach((item, index) => {
+            var comm = _.findIndex(res.data, function(o) {
+              return o.bjdm == item.uuid;
+            });
+            // console.log(comm)
+
+            if (comm >= 0) {
+              //console.log(this.selectCard,7777777);
+              if(this.selectCard.gradeList){
+                if(this.selectCard.gradeList.includes(item.njdm)){
+                  this.$set(this.classList[index], "cybj", true);
+                  tempNum = tempNum + 1
+                }else{
+                  this.$set(this.classList[index], "cybj", false); 
+                }
+              }else{
+                tempNum = tempNum + 1
+                this.$set(this.classList[index], "cybj", true);
+              }
+              //帅选该班级是否属于所选卡片的班级
+            } else {
+              this.$set(this.classList[index], "cybj", false);
+            }
+          });
+
+
+          if(tempNum != 0){//有常用班级
+            this.showCy = true;
+          }else{//无常用班级
+            this.showCy = false;
+          }
+        });
+    },
+    /**
+     * 说明:获得年级List
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async selectNjList() {
+      var res = await this.$fetch(api.selectNjList(), {
+        xxdm: localStorage.getItem("xxdm")
+      });
+      //console.log(this.selectCard.gradeList,'88888')
+      /* 当选择卡片后  帅选出卡片所属于的年级和常用班级 */
+     //else{
+        await this.getQxBjList(); //获取权限班级
+        if (this.qxbj.length != 0) {
+          this.qxbj.forEach((item, index) => {
+            var temp = _.filter(res, { njdm: item.njdm }); //刷选权限年级
+            this.gradeList.push(temp[0]);
+          });
+        } else {
+          this.gradeList = res;
+        }
+        var tempList = [];
+        if(this.selectCard.gradeList){
+         // console.log(333)
+          this.gradeList.forEach((item,index)=>{
+            this.selectCard.gradeList.includes(item.njdm) ?  tempList.push(item) : ''
+          })
+          this.gradeList = tempList;
+        }
+    },
+    /**
+     * 说明:获得班级List
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async selectBjListByJbxn() {
+      this.loading = true;
+      var res = await this.$fetch(api.selectBjListByJbxn(), {
+        xxdm: localStorage.getItem("xxdm"),
+        dqxn: localStorage.getItem("xn")
+      });
+      await this.getQxBjList(); //获取权限班级
+      this.getCybjList();
+      res.forEach((item, index) => {
+        item.count = parseInt(item.bjrs);
+      });
+      this.loading = false;
+      if (this.qxbj.length != 0) {
+        this.qxbj.forEach((item, index) => {
+          item.objectOne.forEach((sitem, sindex) => {
+            var temp = _.filter(res, { uuid: sitem.bjdm }); //帅选权限班级
+            this.classList.push(temp[0]);
+          });
+        });
+      } else {
+        this.classList = res;
+      }
+    },
+    /**
+     * 说明:获得学生List
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async gettBjxsAll(bjid) {
+      var res = await this.$fetch(api.gettBjxsAll(bjid), {
+        xxdm: localStorage.getItem("xxdm"),
+        xn: localStorage.getItem("xn"),
+        bjid: bjid
+      });
+      var initStudentLength = 0;//班级原始数组长度
+      var chooseStudentLength = 0;//所选学生数组的长度
+      // console.log(res.data);
+      this.studentList = res.data;
+      if(this.studentList.length == 0){
+        return;
+      }
+      this.studentList.unshift({name: "", items: [{check:false,xm:"全选",uuid:res.data[0].items[0].bjdm,bj:res.data[0].items[0].bjmc,njdm:res.data[0].items[0].njdm,bjdm:res.data[0].items[0].bjdm}]})
+     // console.log(this.studentList)
+      for (var i = 0; i < this.studentList.length; i++) {
+        for (var j = 0; j < this.studentList[i].items.length; j++) {
+          initStudentLength += 1;
+          if (this.checkIsExist(this.studentList[i].items[j])) {
+            chooseStudentLength +=1;
+            this.studentList[i].items[j].check = true;
+          }
+        }
+      }
+      if((initStudentLength-1) == chooseStudentLength){
+        this.$set(this.studentList[0].items[0],'check',true);
+      }
+      
+    },
+    /**
+     * @description: 跳转到发卡
+     * @param {type}
+     * @return:
+     */
+    renderpostCard() {
+      this.mergeClassStudent();
+      this.$store.dispatch("setSelectStudent", this.selecdStudent);
+      this.$store.dispatch("setSelectAllClass", this.selectAllClass);
+      this.$store.dispatch("setSelectAllGrade", this.selectAllGrade);
+
+      this.$emit("submitSelect");
+    },
+    /**
+     * 说明:选择所有子类
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async checkAll(item, type, iscy) {
+      if (type == "nj") {
+        if (item.check) {
+          this.$set(item, "check", false);
+          this.selectAllGrade = _.reject(this.selectAllGrade, [
+            "njdm",
+            item.njdm
+          ]);
+          this.classList.forEach((sitem, index) => {
+            if (sitem.njdm == item.njdm) {
+              this.$set(this.classList[index], "check", false);
+            }
+          });
+           this.selectAllClass = _.reject(this.selectAllClass, [
+            "njdm",
+            item.njdm
+          ]);
+          
+        } else {
+          this.$set(item, "check", true);
+          this.classList.forEach((sitem, index) => {
+            if (sitem.njdm == item.njdm) {
+              this.$set(this.classList[index], "check", true);
+              this.selectAllClass.push(sitem);
+            }
+          });
+          //console.log(this.selectAllClass,'jjjjjjjjjjjj')
+          var filterClass = _.filter(this.classList, { njdm: item.njdm });
+          var classUuid = _.map(filterClass, "uuid");
+      
+          //item.count = res.data.length;
+          this.selectAllGrade.push(item);
+          //this.mergeGradeStudent();
+          this.mergeClassStudent();
+        }
+      } else if (type == "bj") {
+        if (item.check) {
+          this.$set(item, "check", false);
+          let chooseNj = _.findIndex(this.gradeList, function(o) {
+            return o.njdm == item.njdm;
+          });
+          //console.log(chooseNj,222222222)
+          if (chooseNj > -1) {
+            if (this.gradeList[chooseNj].check == true) {
+              this.$set(this.gradeList[chooseNj], "check", false);
+              this.selectAllGrade = _.reject(this.selectAllGrade, [
+                "njdm",
+                item.njdm
+              ]);
+            }
+          }
+          //console.log(this.selectAllClass,33333333333)
+          if(this.selectAllClass.length > 0){
+            this.selectAllClass = _.reject(this.selectAllClass, [
+              "uuid",
+              item.uuid
+            ]);
+          }
+          this.selecdStudent = _.reject(this.selecdStudent,[
+            "bjdm",
+            item.uuid
+          ])
+        } else {
+          this.selectAllClass.push(item);
+          this.$set(item, "check", true);
+          var res = await this.$fetch(api.getStudentAllByClass(), {
+            xxdm: localStorage.getItem("xxdm"),
+            dqxn: localStorage.getItem("xn"),
+            list: item.uuid ? item.uuid : item.bjdm
+          });
+          
+        }
+        this.mergeClassStudent();
+      }
+
+      this.choosenum = this.getStudentNum();
+    },
+    /**
+     * 说明:合并全选的班级里的学生和已经选中的学生
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     * isNum   是否需要已选人数
+     */
+    mergeClassStudent(isNum) {
+      for (var i = 0; i < this.selectAllClass.length; i++) {
+        this.selecdStudent = _.reject(this.selecdStudent, [
+          "bjdm",
+          this.selectAllClass[i].uuid
+        ]);
+      }
+      this.selecdStudent = _.uniqBy(this.selecdStudent, "xh");
+      this.selectAllClass = _.uniqBy(this.selectAllClass, "uuid");
+      this.selectAllGrade = _.uniqBy(this.selectAllGrade, "njdm");
+    },
+    /**
+     * 说明:查找教师
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    searchTeacher() {
+      this.isSearchIn = false;
+      this.$refs.searchipt.focus();
+    },
+    /**
+     * 说明:查找教师
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    async searchsubmit() {
+      //console.log(5555)
+      this.showType = 3;
+      var res = await this.$fetch(api.getStudentListBykeywords(), {
+        xxdm: localStorage.getItem("xxdm"),
+        dqxn: localStorage.getItem("xn"),
+        keywords: this.searchVal
+      });
+
+      res.data.forEach((item, index) => {
+        item.check = false;
+      });
+
+      for (var i = 0; i < res.data.length; i++) {
+        if (this.checkIsExist(res.data[i])) {
+          res.data[i].check = true;
+        }
+      }
+      this.searchList = res.data;
+    },
+    /**
+     * 说明:选择所有子类
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    checkStudent(item) {
+      let that = this;
+      item.check = !item.check;
+      if(item.xm == '全选'){//  点击全选
+        //that.checkAllStudent = !that.checkAllStudent;
+        /* 班级是否选中的状态 */
+        var classTemp = _.find(this.classList,function(o){
+          return o.uuid == item.uuid
+        })
+        var studentNum = 0;
+          if(item.check){
+            //that.selectAllClass.push(item);
+            that.$set(classTemp,'check',true)
+            _.forEach(that.studentList,function(childitem,index){//循环班级列表
+              _.forEach(childitem.items,function(o){
+                  if(o.xm != '全选'){
+                    studentNum += 1;
+                    that.selecdStudent.push(o);
+                  }
+                  that.$set(o,'check',true);
+              })
+            })
+            //that.selecdStudent = _.reject(that.selecdStudent,{xh:item.xh})
+            //that.choosenum = that.choosenum+studentNum;
+          }else{
+            that.$set(classTemp,'check',false)
+            _.forEach(that.studentList,function(childitem,index){
+              _.forEach(childitem.items,function(o){
+                that.$set(o,'check',false);//取消全选
+                 if(o.xm != '全选'){
+                    studentNum += 1;
+                  }
+                //console.log(that.selecdStudent)
+              })
+            })
+             that.selecdStudent = _.reject(that.selecdStudent, { bjdm: item.bjdm });
+            //that.selectAllClass = _.reject(that.selectAllClass, { bjdm: item.bjdm });
+            //that.choosenum = that.choosenum-studentNum;
+          }
+          
+          that.$set(item,'count',studentNum);
+          that.mergeClassStudent();
+          that.choosenum = that.getStudentNum();
+          return;
+      }
+      if (item.check) {
+        this.selecdStudent.push(item);
+        this.choosenum = this.choosenum + 1;
+        let selectStu = _.filter(this.selecdStudent, ['bjdm', item.bjdm]);//当前所选学生的个数等于该班级的学生的个数时  则该班级状态为选中的状态   全选按钮也选中
+        //console.log(selectStu,6666)
+        let curClass = _.find(this.classList, ['uuid', item.bjdm]);//获取当前所选学生对应班级的人数
+        let curClassLength = curClass.count;
+        //console.log(curClassLength,selectStu.length,44444)
+        if(curClassLength == selectStu.length){//如果相等  则对应状态都勾选
+          //console.log(that.studentList[0].items[0],55777777)
+          that.$set(that.studentList[0].items[0],'check',true);
+          that.$set(curClass,'check',true);
+        }else{
+          that.$set(that.studentList[0],'check',false);
+          that.$set(curClass,'check',false);
+        }
+        //console.log(curClass,777)
+      } else {
+        let chooseBj = _.find(this.classList, function(o) {
+          return o.uuid == item.bjdm;
+        });
+        if (chooseBj) {//点击单个学生取消时，对应班级的状态为不选中的状态
+          that.$set(chooseBj,'check',false)
+        }
+        this.selecdStudent = _.reject(this.selecdStudent, { xh: item.xh });
+        this.choosenum = this.choosenum - 1;
+        that.$set(that.studentList[0].items[0],'check',false);
+        this.selectAllClass = _.reject(this.selectAllClass, { bjdm: item.bjdm });
+      }
+    },
+    /**
+     * 说明:拼音首字母跳转
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    letterJump(letter) {
+      let obj = document.getElementById(letter);
+      let oPos = obj.offsetTop - 60;
+      document.getElementById("showType").scrollTo(0, oPos);
+    },
+    /**
+     * 说明:判断是否已经选择了学生
+     * 作者:RayJ
+     * 更新时间:2019-03-18
+     */
+    checkIsExist(item) {
+      // console.log(this.selecdStudent,456);
+      for (var i = 0; i < this.selecdStudent.length; i++) {
+        if (item.xh == this.selecdStudent[i].xh) {
+          return true;
+        }
+      }
+    },
+    /**
+     * 说明:删除所选学生
+     * 作者:raq
+     * 更新时间:2019-03-27
+     */
+    delSelectAllClass(item, index) {
+      this.selectAllClass.splice(index, 1);
+      this.choosenum = this.choosenum - item.count;
+      this.classList.forEach((items, sindex) => {
+        if (items.uuid == item.uuid) {
+          this.$set(this.classList[sindex], "check", false);
+        }
+      });
+      let chooseNj = _.findIndex(this.gradeList, function(o) {
+        return o.njdm == item.njdm;
+      });
+      if(chooseNj != -1){
+        this.$set(this.gradeList[chooseNj], "check", false);
+      }
+
+    },
+    /**
+     * 说明:删除所选学生
+     * 作者:raq
+     * 更新时间:2019-03-27
+     */
+    delSelecdStudent(itema, index) {
+      this.selecdStudent.splice(index, 1);
+      this.studentList.forEach((item, aindex) => {
+        item.items.forEach((items, indexs) => {
+          if (itema.xh == items.xh) {
+            this.$set(this.studentList[aindex].items[indexs], "check", false);
+          }
+        });
+      });
+      this.choosenum = this.choosenum - 1;
+    },
+    /**
+     * 说明:删除所选学生
+     * 作者:raq
+     * 更新时间:2019-03-27
+     */
+    delSelectAllGrade(itema, index) {
+      this.gradeList.forEach((item, sindex) => {
+        if (itema.uuid == item.uuid) {
+          this.$set(this.gradeList[sindex], "check", false);
+        }
+      });
+      // console.log(this.gradeList)
+      this.selectAllGrade.splice(index, 1);
+      this.choosenum = this.choosenum - itema.count;
+    },
+    /**
+     * 说明:清空搜索值
+     * 作者:raq
+     * 更新时间:2019-03-28
+     */
+    clearSearch() {
+      this.searchVal = "";
+    },
+    /**
+     * 说明:选中搜索的值
+     * 作者:raq
+     * 更新时间:2019-03-28
+     */
+    changeCheck(item, index) {
+      this.$set(this.searchList[index], "check", !item.check);
+      if (item.check) {
+        this.selecdStudent.splice(this.selecdStudent.length, 0, item);
+        this.choosenum = this.choosenum + 1;
+      } else {
+        var delIndex = this.selecdStudent.findIndex(items => {
+          return items.xh == item.xh;
+        });
+        this.selecdStudent.splice(delIndex, 1);
+        this.choosenum = this.choosenum - 1;
+      }
+    },
+    /**
+     * 说明:获取权限班级
+     * 作者:raq
+     * 更新时间:2019-04-04
+     */
+    async getQxBjList() {
+      var { data } = await this.$fetch(api.getQxBjList(), {
+        zgh: localStorage.getItem("zgh"),
+        xxdm: localStorage.getItem("xxdm"),
+        xndm: localStorage.getItem("xn")
+      });
+      this.qxbj = data;
+
+      //var temp = _.filter(this.selectAllGrade,{njdm:item.njdm})
+    },
+    getStudentNum() {
+      let itemList = this.selecdStudent;
+      let classList = this.selectAllClass;
+      var num = itemList.length;
+      for (var i = 0; i < classList.length; i++) {
+        num = num + classList[i].count;
+      }
+      return num;
+    }
+  }
+};
+</script>
+
+<style scoped lang="scss">
+@import "../../../style/style.scss";
+body {
+  background-color: #fff !important;
+}
+.blue {
+  color: #3e81ff;
+}
+.m_pad30 {
+  padding: px2rem(30px);
+}
+.classCell {
+  padding-bottom: px2rem(30px);
+}
+.selectwarp {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: #fff;
+  z-index: 100;
+  .showType {
+    height: 100%;
+    flex: 1;
+    overflow: auto;
+  }
+  .tabs {
+    padding: px2rem(20px) px2rem(30px);
+    padding-top: 0;
+    height: px2rem(70px);
+    p {
+      font-size: px2rem(32px);
+      font-weight: 300;
+      float: left;
+      margin-right: px2rem(10px);
+      line-height: px2rem(70px);
+    }
+    .van-icon {
+      font-size: px2rem(26px);
+      float: left;
+      margin-right: px2rem(10px);
+      //margin-top:px2rem(16px);
+      line-height: px2rem(70px);
+    }
+  }
+  .selectTitle {
+    height: px2rem(80px);
+    background-color: #f0f3f8;
+    line-height: px2rem(80px);
+    font-size: px2rem(26px);
+    color: #606266;
+    padding-left: px2rem(30px);
+  }
+  .studentWarp {
+    height: 100%;
+  }
+  .choosenum {
+    width: 100%;
+    height: px2rem(100px);
+    background-color: #fff;
+    position: relative;
+    z-index: 99;
+    font-size: px2rem(30px);
+    p:nth-child(1) {
+      color: #3e81ff;
+      float: left;
+      height: px2rem(100px);
+      line-height: px2rem(100px);
+      padding-left: px2rem(30px);
+    }
+    p:nth-child(2) {
+      color: #fff;
+      background-color: #3e81ff;
+      width: px2rem(150px);
+      float: right;
+      height: px2rem(70px);
+      line-height: px2rem(70px);
+      margin-right: px2rem(30px);
+      margin-top: px2rem(15px);
+      border-radius: px2rem(40px);
+      text-align: center;
+    }
+  }
+  .showstudentBottom {
+   min-height: px2rem(800px);
+   padding-bottom:px2rem(10px);
+    .van-cell {
+      height: px2rem(120px);
+      font-size: px2rem(32px);
+      color: #333;
+    }
+  }
+  .viainfo {
+    .via {
+      width: px2rem(80px);
+      height: px2rem(80px);
+      border-radius: 50%;
+      background-color: #909399;
+      img {
+        width: px2rem(80px);
+        height: px2rem(80px);
+      }
+    }
+    .via,
+    .name {
+      float: left;
+    }
+    .name {
+      margin-left: px2rem(30px);
+      p:nth-child(1) {
+        color: #303133;
+        font-size: px2rem(30px);
+        span {
+          font-size: px2rem(28px);
+          color: #999;
+          margin-left: px2rem(20px);
+        }
+      }
+      p:nth-child(2) {
+        color: #909399;
+        font-size: px2rem(18px);
+      }
+    }
+    .name.bj {
+      line-height: px2rem(80px);
+    }
+    .close {
+      float: right;
+      line-height: px2rem(90px);
+    }
+  }
+  .grayline {
+    height: px2rem(20px);
+    background-color: #eff1f3;
+  }
+  .queding {
+    width: px2rem(642px);
+    height: px2rem(88px);
+    background-color: #3e81ff;
+    border-radius: px2rem(50px);
+    position: fixed;
+    left: px2rem(60px);
+    bottom: px2rem(30px);
+    color: #fff;
+    font-size: px2rem(34px);
+    text-align: center;
+    line-height: px2rem(88px);
+  }
+}
+.keySearch {
+  margin-top: px2rem(20px);
+  float: left;
+  width: 100%;
+}
+
+.showstudent {
+  background-color: #fff;
+  flex: 1;
+  min-height: px2rem(800px);
+  overflow-y: scroll;
+  padding-bottom:px2rem(200px);
+  .showstudentTop {
+    .van-cell {
+      height: px2rem(120px);
+      font-size: px2rem(32px);
+      color: #333;
+      line-height: px2rem(90px);
+      .close {
+        font-size: px2rem(32px);
+        color: #333;
+        line-height: px2rem(90px);
+      }
+      .van-cell__title {
+        height: px2rem(10px);
+        line-height: px2rem(90px);
+      }
+    }
+  }
+}
+.studentWarp {
+  .studentListMain {
+    width: 100%;
+    font-size: px2rem(30px);
+    dt {
+      width: 100%;
+      float: left;
+      background: #f7f7f7;
+      height: px2rem(70px);
+      line-height: px2rem(70px);
+      padding-left: px2rem(30px);
+    }
+    dd {
+      width: 100%;
+      float: left;
+      height: px2rem(80px);
+      line-height: px2rem(80px);
+      padding-left: px2rem(30px);
+      .selState {
+        width: px2rem(65px);
+        height: px2rem(80px);
+        background: url(../../../assets/dot_sel.png) no-repeat left center;
+        background-size: auto 50%;
+        float: left;
+        transition: 0.2s all;
+      }
+      .selState.on {
+        background: url(../../../assets/dot_sel_cur.png) no-repeat left center;
+        background-size: auto 50%;
+      }
+      .teachimg {
+        width: px2rem(80px);
+        height: px2rem(80px);
+        border-radius: 50%;
+        overflow: hidden;
+        float: left;
+        img {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
+      }
+      .teachname {
+        float: left;
+        height: px2rem(80px);
+        line-height: px2rem(80px);
+        font-size: px2rem(28px);
+      }
+    }
+    .letterAside {
+      position: fixed;
+      right: px2rem(20px);
+      width: px2rem(50px);
+      li {
+        width: 100%;
+        height: px2rem(40px);
+        overflow: hidden;
+        line-height: px2rem(40px);
+        text-align: center;
+        font-size: px2rem(26px);
+      }
+    }
+  }
+
+  .van-checkbox__label {
+    font-size: px2rem(30px);
+  }
+  .cube-index-list {
+    .van-checkbox {
+      margin-left: px2rem(30px);
+      width: 80%;
+      height: px2rem(100px);
+      .van-checkbox__label {
+        line-height: px2rem(100px);
+      }
+      .van-checkbox__icon,
+      .van-checkbox__label {
+        line-height: px2rem(40px);
+      }
+    }
+    .cube-index-list-nav > ul > li.active {
+      color: #3e81ff;
+    }
+    .cube-index-list-nav {
+      top: 30%;
+    }
+    .cube-index-list-anchor {
+      height: px2rem(30px);
+      line-height: px2rem(30px);
+      padding: px2rem(14px) px2rem(24px) px2rem(44px) px2rem(33px);
+    }
+  }
+  .cube-index-list-content {
+    padding-bottom: px2rem(200px);
+  }
+}
+.checkList {
+  padding-left: px2rem(20px);
+
+}
+.searchList{
+    min-height: px2rem(700px);
+  overflow-y: scroll;
+}
+.checkList li {
+  height: px2rem(100px);
+  padding: px2rem(10px) 0;
+  padding-right: px2rem(30px);
+  width: 100%;
+  border-bottom: 1px solid #eff1f3;
+  line-height: px2rem(120px);
+  padding-left: px2rem(25px);
+  .f_rightArrow {
+    float: right;
+    height: px2rem(80px);
+    width: px2rem(80px);
+    background: url(../../../assets/arrow_right.png) no-repeat right center;
+    background-size: auto 40%;
+  }
+  .selState {
+    width: px2rem(65px);
+    height: px2rem(80px);
+    background: url(../../../assets/dot_sel.png) no-repeat left center;
+    background-size: auto 50%;
+    float: left;
+    transition: 0.2s all;
+  }
+  .selState.on {
+    background: url(../../../assets/dot_sel_cur.png) no-repeat left center;
+    background-size: auto 50%;
+  }
+  .teachimg {
+    width: px2rem(80px);
+    height: px2rem(80px);
+    border-radius: 50%;
+    overflow: hidden;
+    float: left;
+    img {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  }
+  .teachname {
+    float: left;
+    height: px2rem(80px);
+    line-height: px2rem(80px);
+    font-size: px2rem(28px);
+  }
+}
+.searchbox {
+  height: px2rem(58px);
+  width: 100%;
+  background: #eff1f3;
+  border-radius: px2rem(29px);
+  font-size: px2rem(28px);
+  line-height: px2rem(58px);
+  padding: 0 px2rem(40px);
+  text-align: center;
+  color: #8e8e8e;
+  position: relative;
+  .searchipt {
+    background: transparent;
+    width: 100%;
+    height: px2rem(56px);
+    border: none;
+  }
+  .searchNone {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  .holder {
+    display: inline-block;
+    background: url(../../../assets/dot_search.png) no-repeat left center;
+    background-size: auto 50%;
+    padding-left: px2rem(50px);
+  }
+  img {
+    position: absolute;
+    right: px2rem(20px);
+    top: px2rem(10px);
+    width: px2rem(40px);
+  }
+}
+  .custom-item {
+    font-size: px2rem(28px);
+  }
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none; //此处只是去掉默认的小×
+  }
+
+  .emptyimg {
+    width: 100%;
+    margin: px2rem(230px) auto px2rem(30px) auto;
+  }
+  .emptyText {
+    color: #606266;
+    text-align: center;
+    font-size: px2rem(30px);
+  }
+
+  .fade{
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    position: fixed;
+    z-index: 9999;
+    top:0;
+    left: 0;
+    div{
+        left: 50%;
+        top:50%;
+    }
+}
+</style>
+

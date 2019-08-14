@@ -1,0 +1,53 @@
+<template>
+  <div class="selectwarp">
+    <!-- 发卡记录为空时 -->
+    <div v-if="empty" class="emptywarp">
+      <div @click="showpop">nnn</div>
+      <van-popup v-model="show" position="bottom" :overlay="true">
+        内容
+      </van-popup>
+
+    </div>
+
+
+
+
+
+    <!-- 发卡记录不为空时 -->
+    <div v-else class="emptywarp"></div>
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index"
+  
+export default {
+  name:'cardRecord',
+  data() {
+    return {
+      show:false,
+      empty:true
+    }
+  },
+  methods: {
+   showpop(){
+     this.show = true;
+   }
+  }
+}
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+  body{
+    background-color: #fff !important;
+  }
+  .selectwarp{
+    width: 100%;
+    height: 100%;
+  }
+</style>
+<style lang="scss">
+  @import '../../../../style/style.scss';
+  
+</style>

@@ -1,0 +1,1142 @@
+<template>
+  <div class="releasewarp">
+    <div class="m_releasMain">
+      <textarea class="m_text empty" v-model="releasText" @click="releasIn" @blur="releasOut"></textarea>
+      <div class="m_uploadimgMain">
+        <ul>
+          <li v-for="(item,index) in attachmentList">
+            <img v-if="item.type=='image'" :src="item.showimg">
+            <video v-if="item.type=='video'" :src="item.showimg"></video>
+            <img class="clearIcon" src="/static/img/dot-cleartxt.png" @click="delImg(item)">
+          </li>
+          <li class="f_adduploadimg" v-if="showAddImg">
+            <!-- <van-uploader :after-read="changefile">
+                            <van-icon name="photograph" />
+            </van-uploader>-->
+            <input type="file" class="addFile" @change="changefile">
+            
+          </li>
+        </ul>
+        <div class="m_uploadinfo">
+          <span>{{imgnum}}</span>/9 (文件大小不超过10M）
+        </div>
+      </div>
+    </div>
+    <div class="m_relsesSetBox">
+      <div class="u_setCol" v-on:click="selStudent">
+        <div class="f_tit">发布给谁</div>
+        <div class="f_value arrow-right">{{studentVal?studentVal:"请选择"}}</div>
+      </div>
+      <div class="u_setCol" v-on:click="selAuthority">
+        <div class="f_tit">谁可以看</div>
+        <div class="f_value arrow-right">{{curAuthoer.text?curAuthoer.text:"请选择"}}</div>
+      </div>
+      <div class="u_setCol" v-if="showMessage">
+        <div class="f_tit">短信通知</div>
+        <div class="f_value">
+          <div class="f_selbox" :class="{'on':isMail}" v-on:click="isMail=!isMail">
+            <div class="f_seldot"></div>
+          </div>
+        </div>
+      </div>
+      <div class="u_setCol" v-on:click="selCardType">
+        <div class="f_tit">考评类型</div>
+        <div class="f_value">
+          {{curCardType[0]?(curCardType[0].text?curCardType[0].text:'请选择'):"请选择"}}
+          {{curCardType[1]?(curCardType[1].text?"-"+curCardType[1].text:''):""}}
+        </div>
+      </div>
+      <div class="u_setCol">
+        <div class="f_tit">是否发卡</div>
+        <div class="f_value">
+          <div class="f_selbox" :class="{'on':isSendCard}" v-on:click="isSendCard=!isSendCard">
+            <div class="f_seldot"></div>
+          </div>
+        </div>
+      </div>
+      <div class="u_setColNoHeight noLine">
+        <div class="f_tit">写评语(必填)</div>
+        <div class="f_pybox">
+          <textarea class="m_text empty" v-model="PyText" @click="pyIn" @blur="pyOut"></textarea>
+        </div>
+        <div class="pinyu">
+          <span
+            :class="{'active':item.check}"
+            v-for="(item,index) in pyList"
+            @click="SelectPy(item)"
+          >{{item.pynr}}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="m_botRelease">
+      <div class="ReleaseDynamic" v-on:click="releaseDynamic">发动态</div>
+    </div>
+
+    <transition name="upinto">
+      <van-picker
+        v-if="isChangeCardLx"
+        show-toolbar
+        title="选择卡片类型"
+        :columns="kplx"
+        @cancel="onCancel"
+        @confirm="onConfirm"
+        @change="onTypeChange"
+        class="f_grade_picker"
+      />
+    </transition>
+
+    <transition name="upinto">
+      <van-picker
+        v-if="isChangeAuthor"
+        show-toolbar
+        title="选择谁可以看"
+        :columns="AuthorList"
+        @cancel="onCancel"
+        @confirm="onConfirmAuthor"
+        class="f_grade_picker"
+      />
+    </transition>
+
+    <div class="mask" v-if="isMask"></div>
+
+    <transition name="flod">
+      <component v-show="isSelectStudent" :is="currentView" @submitSelect="submitSelect"></component>
+    </transition>
+  </div>
+</template>
+
+<script>
+import { api } from "../../../../utils/Api/index";
+import * as utilsfun from "../../../../utils/functions.js";
+import comp_SelectStudent from "../../commons/selectStudent.vue";
+
+import _ from "lodash";
+export default {
+  name: "rankingHome",
+  data() {
+    return {
+      isSelectStudent: false, //是否显示选择学生的组件
+      releasText: "有什么新鲜事想告诉大家？",
+      curTeacher: {},
+      curCardType: [],
+      isMask: false,
+      isChangeCardLx: false,
+      kplx: [],
+      kptype: [],
+      kpsubtype: [],
+      isMail: false, //是否短信通知
+      isSendCard: false, //是否发卡
+      PyText: "", //评语
+      studentObj: {},
+      selfObj: {}, //教师具体的对象
+      isupload: false, //是否上传状态
+      attachmentList: [], //附件列表
+      studentList: [], //选择的目标学生列表
+      studentVal: "", //选中的学生用字符串形式展示
+      isChangeAuthor: false, //是否显示“谁可以看”的弹层
+      AuthorList: [
+        { text: "全校可见", name: "qx" },
+        { text: "班级可见", name: "bj" },
+        { text: "仅学生自己可见", name: "gr" }
+      ], //谁可以看的具体列表值
+      curAuthoer: {}, //当前选中的权限值
+      pyList: [], //卡片的默认评语
+      teacherClassList: [], //教师班级列表
+      AllSelectStudent: [], //选中的所有学生列表（全选班级，全选年级）都包含在内
+      currentView: "", //子组件的名称
+      imgnum: 0, //图片上传数量
+      showAddImg: true, //是否显示添加图片按钮 当图片数量大于9时  为false
+      sfsj: 0, //卡片是否升级
+      cardNum: 0, //所选卡片剩余数量
+      showMessage: false //是否显示短信通知
+    };
+  },
+  mounted() {
+    this.init();
+  },
+  components: {
+    comp_SelectStudent
+  },
+  methods: {
+    /**
+     * 说明:格式化已选中的学生,字符串的形式显示
+     * 作者:RayJ
+     * 更新时间:2019-03-09
+     */
+    getStudentVal() {
+      let itemList = this.$store.getters.getSelectStudent;
+      let classList = this.$store.getters.getSelectAllClass;
+      let gradeList = this.$store.getters.getSelectAllGrade;
+      // console.log(itemList,classList,gradeList);
+      var sval = "";
+      for (var i = 0; i < classList.length; i++) {
+        sval = sval + classList[i].bj + ",";
+      }
+      for (var i = 0; i < gradeList.length; i++) {
+        sval = sval + gradeList[i].njmc + ",";
+      }
+      for (var i = 0; i < itemList.length; i++) {
+        sval = sval + itemList[i].xm + ",";
+      }
+      // console.log(sval);
+      this.studentVal = sval;
+    },
+    /**
+     * 说明:选择谁可以看
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    selAuthority() {
+      this.isMask = true;
+      this.isChangeAuthor = true;
+    },
+    /**
+     * 说明:选中某个权限
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    onConfirmAuthor(val) {
+      this.curAuthoer = val;
+      this.onCancel();
+      //console.log(val);
+    },
+    /**
+     * 说明:关闭所有弹层
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    onCancel() {
+      this.isMask = false;
+      this.isChangeAuthor = false;
+      this.isChangeCardLx = false;
+    },
+
+    /**
+     * 说明:初始化基础数据并存入localStorage里(只做set不做判断是否存在,保证每次浏览页面都是最新的数据)
+     * 作者:RayJ
+     * 更新时间:2019-03-09
+     */
+    async init() {
+      //获取已经选择的学生字符串
+      this.getStudentVal();
+      //获取已经选择的学生的最终列表
+      this.formatAllStudentList();
+      // 获取短信通知
+      this.getMessageNotice();
+      //获取登录用户的具体对象信息
+      this.selfObj = JSON.parse(localStorage.getItem("loginObj"));
+
+      //获取教师班级列表
+      var res = await this.$fetch(api.getTeacherClass(), {
+        xxdm: localStorage.getItem("xxdm"),
+        zgh: localStorage.getItem("zgh"),
+        xndm: localStorage.getItem("xn")
+      });
+      this.teacherClassList = res.data;
+
+      if (
+        this.$store.getters.getDepartment.length != 0 &&
+        this.$store.getters.getAllTeacher.length != 0
+      ) {
+        this.curTeacher = this.$store.getters.getChoiceTeacher;
+      } else {
+        var parmaobj = {
+          xxdm: localStorage.getItem("xxdm"),
+          dqxn: localStorage.getItem("xn"),
+          dqxq: localStorage.getItem("xq"),
+          ckr: localStorage.getItem("zgh"),
+          ckrlx: localStorage.getItem("usertype") == "4" ? "sx" : "ls"
+        };
+
+        //获取卡片和子项类型信息
+        var res = await this.$fetch(api.getKpAllList(), parmaobj);
+        // console.log(res,106);
+        this.$store.dispatch("setCardType", res.data);
+        // console.log(this.$store.getters.getCardType);
+        this.kplx = this.formatCardType(this.$store.getters.getCardType);
+
+        // console.log(this.kplx);
+
+        // var parmaobj = {
+        //     type:"teacher",
+        //     xxdm:localStorage.getItem("xxdm"),
+        //     zgh:this.selfObj.usercode?this.selfObj.usercode:"",
+        //     xh:this.selfObj.usercode?this.selfObj.usercode:"",
+        //     xndm:localStorage.getItem("xn"),
+        //     xqdm:localStorage.getItem("xq"),
+        // };
+        // var res =  await this.$fetch(api.getReleaseDynamic(),parmaobj);
+        // console.log(res);
+        // this.$store.dispatch("setDepartment",res.grouplist);
+        // this.$store.dispatch("setAllTeacher",res.stateTeacherList);
+        // this.$store.dispatch("setCardType",res.kplxlist);
+        // this.$store.dispatch("setCardSubType",res.kpzlxlist);
+      }
+    },
+    /**
+     * 说明:格式化类型列表
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    formatCardType(data) {
+      var resarr = [];
+      var typearr = [];
+      var subarr = [];
+      for (var i = 0; i < data.length; i++) {
+        typearr.push({
+          text: data[i].kpmc,
+          value: data[i].kpid,
+          tplj: data[i].tplj,
+          sfsj: data[i].sfsj,
+          kpsl: data[i].kpsl
+        });
+      }
+      subarr = this.formatSubCardType(0);
+      resarr.push(
+        { className: "cardtype", values: typearr },
+        { className: "cardsubtype", values: subarr }
+      );
+      return resarr;
+    },
+    /**
+     * 说明:格式化子类型列表，获取子类型列表
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    formatSubCardType(index) {
+      var data = this.$store.getters.getCardType;
+      var subarr = [];
+      if (data[index].iskpfx == 1) {
+        for (var j = 0; j < data[index].kpfxList.length; j++) {
+          subarr.push({
+            text: data[index].kpfxList[j].fxmc,
+            value: data[index].kpfxList[j].fxid
+          });
+        }
+      }
+      return subarr;
+    },
+    /**
+     * 说明:格式化动态接收人
+     * 作者:RayJ
+     * 更新时间:2019-03-21
+     */
+    async formatAllStudentList() {
+      //获取学生列表
+      var studentdata = this.$store.getters.getSelectStudent;
+      //获取班级列表
+      var classdata = this.$store.getters.getSelectAllClass;
+      //获取年级列表
+      var gradedata = this.$store.getters.getSelectAllGrade;
+      let classParam = [];
+      let gradeParam = [];
+      //生成获取班级学生需要的班级参数列表
+      for (var i = 0; i < classdata.length; i++) {
+        classParam.push(classdata[i].uuid);
+      }
+      //生成获取年级学生需要的年级参数列表
+      for (var i = 0; i < gradedata.length; i++) {
+        gradeParam.push(gradedata[i].njdm);
+      }
+      //如果有全选年级,获取年级下所有学生并concat到学生列表中
+      if (gradeParam.length > 0) {
+        var grade_res = await this.$fetch(api.getStudentAllByGrade(), {
+          xxdm: localStorage.getItem("xxdm"),
+          dqxn: localStorage.getItem("xn"),
+          list: gradeParam.toString()
+        });
+        // console.log(grade_res);
+        studentdata = studentdata.concat(grade_res.data);
+      }
+      //如果有全选班级,获取班级下所有学生并concat到学生列表中
+      if (classParam.length > 0) {
+        var class_res = await this.$fetch(api.getStudentAllByClass(), {
+          xxdm: localStorage.getItem("xxdm"),
+          dqxn: localStorage.getItem("xn"),
+          list: classParam.toString()
+        });
+        // console.log(class_res);
+        studentdata = studentdata.concat(class_res.data);
+      }
+
+      this.AllSelectStudent = studentdata;
+
+      // var dtjsrArr = [];
+
+      // for(var i=0;i<studentdata.length;i++){
+      //     dtjsrArr.push({jsrdm:studentdata[i].xh,jsrxm:studentdata[i].xm,jsrsfxz:"1"})
+      // }
+      // // console.log("dtjsrArr",dtjsrArr);
+      // return dtjsrArr
+    },
+    /**
+     * 说明:格式化动态接收人
+     * 作者:RayJ
+     * 更新时间:2019-03-21
+     */
+    formatDtjsrList(isxh) {
+      //格式化所有已选中的学生，转换成后端可接收的对象数组;
+      var dtjsrArr = [];
+      var xhArr = [];
+      // console.log(5555555555555555555555555555555555)
+      // console.log(this.AllSelectStudent)
+      for (var i = 0; i < this.AllSelectStudent.length; i++) {
+        dtjsrArr.push({
+          jsrdm: this.AllSelectStudent[i].xh,
+          jsrxm: this.AllSelectStudent[i].xm,
+          jsrsfxz: "1",
+          jsrbjdm: this.AllSelectStudent[i].bjdm,
+          jsrbjmc: this.AllSelectStudent[i].bjmc,
+          jsrnjdm: this.AllSelectStudent[i].njdm
+        }); //,
+        xhArr.push(this.AllSelectStudent[i].xh); //,
+      }
+      // console.log("dtjsrArr",dtjsrArr);
+      if (isxh) {
+        return xhArr;
+      }
+      return dtjsrArr;
+    },
+    /**
+     * 说明:格式化BjdmList
+     * 作者:RayJ
+     * 更新时间:2019-03-21
+     */
+    formatBjdmList() {
+      //var data =this.$store.getters.getSelectStudent;
+      var BjdmArr = [];
+      for (var i = 0; i < this.teacherClassList.length; i++) {
+        for (var j = 0; j < this.teacherClassList[i].bjList.length; j++) {
+          BjdmArr.push(this.teacherClassList[i].bjList[j].uuid);
+        }
+      }
+      return BjdmArr;
+    },
+    /**
+     * 说明:获取班级信息List
+     * 作者:RayJ
+     * 更新时间:2019-03-21
+     */
+    getBjxxList() {
+      //var data = this.$store.getters.getSelectStudent;
+      // console.log(this.AllSelectStudent);
+      var bjxxrArr = [];
+      for (var i = 0; i < this.AllSelectStudent.length; i++) {
+        bjxxrArr.push({
+          bjmc: this.AllSelectStudent[i].bjmc,
+          bjdm: this.AllSelectStudent[i].bjdm
+        });
+      }
+      // console.log(99999999999999999)
+
+      // console.log(bjxxrArr)
+      return bjxxrArr;
+    },
+    /**
+     * 说明:选中默认评语
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    SelectPy(item) {
+      this.$set(item, "check", !item.check);
+      if (!item.check) {
+        this.PyText = this.PyText.replace(item.pynr, "");
+      } else {
+        this.PyText = this.PyText + item.pynr;
+      }
+    },
+    /**
+     * 说明:切换主类型
+     * 作者:RayJ
+     * 更新时间:2019-03-20
+     */
+    onTypeChange(picker, values) {
+      this.cardNum = values[0].kpsl;
+      if (values[0].kpsl < 1) {
+        //判断卡片数量是否大于1
+        this.$toast({ message: "卡片数量不足", duration: 1000 });
+        return;
+      }
+      if (values[0].kpsl < this.AllSelectStudent.length) {
+        //判断卡片数量是否小于所选学生的数量
+        this.$toast({
+          message: "所选学生数量大于卡片剩余数量",
+          duration: 2000
+        });
+        return;
+      }
+
+      var data = this.$store.getters.getCardType;
+      var subindex = _.findIndex(data, { kpid: values[0].value });
+      picker.setColumnValues(1, this.formatSubCardType(subindex));
+    },
+    /**
+     * 说明:确定卡片类型
+     * 作者:RayJ
+     * 更新时间:2019-03-21
+     */
+    async onConfirm(value) {
+      // console.log(33333333333333)
+      // console.log(value)
+      this.cardNum = value[0].kpsl;
+      if (value[0].kpsl < 1) {
+        //判断卡片数量是否大于1
+        this.$toast({ message: "卡片数量不足", duration: 1000 });
+        return;
+      }
+
+      if (value[0].kpsl < this.AllSelectStudent.length) {
+        //判断卡片数量是否小于所选学生的数量
+        this.$toast({
+          message: "所选学生数量大于卡片剩余数量",
+          duration: 2000
+        });
+        return;
+      }
+
+      this.curCardType = [];
+      if (value[1]) {
+        this.curCardType.push(value[0]);
+        this.curCardType.push(value[1]);
+      } else {
+        this.curCardType.push(value[0]);
+        this.curCardType.push({});
+      }
+      this.isChangeCardLx = false;
+      this.isMask = false;
+      this.sfsj = value[0].sfsj;
+      //获取选中卡片类型的评语
+      var res = await this.$fetch(api.getPyList(), {
+        xxdm: localStorage.getItem("xxdm"),
+        id: value[1] ? value[1].value : value[0].value
+      });
+      this.pyList = res.data;
+    },
+    /**
+     * 说明:发布动态
+     * 作者:RayJ
+     * 更新时间:2019-03-13
+     */
+    async releaseDynamic() {
+      var imgpathlist = [];
+      for (var i = 0; i < this.attachmentList.length; i++) {
+        imgpathlist.push({
+          imgpath: this.attachmentList[i].url,
+          imglx: "img"
+        });
+      }
+
+      if (
+        this.releasText == "" ||
+        this.releasText == "有什么新鲜事想告诉大家？"
+      ) {
+        this.$toast({ message: "发布内容不能为空", duration: 1000 });
+        return;
+      }
+      if (this.formatDtjsrList().length == 0) {
+        this.$toast({ message: "请选择发布给谁", duration: 1000 });
+        return;
+      }
+
+      if (!this.curAuthoer.name) {
+        this.$toast({ message: "请选择可见范围", duration: 1000 });
+        return;
+      }
+      if (!this.curCardType[0]) {
+        this.$toast({ message: "请选择考评类型", duration: 1000 });
+        return;
+      }
+      if (this.PyText == "") {
+        this.$toast({ message: "评语不能为空", duration: 1000 });
+        return;
+      }
+      if (this.formatDtjsrList().length > this.cardNum) {
+        this.$toast({
+          message: "所选学生数量大于卡片剩余数量",
+          duration: 2000
+        });
+        return;
+      }
+    var fjList = this.formatAttachment(this.attachmentList);
+      var fkjlid = "";
+      var saveParma = {
+        bfsj: utilsfun.formateDateAndTimeToString(new Date()),
+        ckr: localStorage.getItem("zgh"),
+        ckrlx: localStorage.getItem("usertype") == "4" ? "sx" : "ls",
+        ckrxm: this.selfObj.name,
+        fjList: fjList,
+        fkpy: this.PyText,
+        kplx: this.curCardType[0].value,
+        kpmc:
+          this.curCardType[0].text +
+          (this.curCardType[1].text ? "-" + this.curCardType[1].text : ""),
+        kpzlx: this.curCardType[1].value ? this.curCardType[1].value : "",
+        sfsj: this.sfsj,
+        xndm: localStorage.getItem("xn"),
+        xqdm: localStorage.getItem("xq"),
+        xsList: this.AllSelectStudent,
+        xxdm: localStorage.getItem("xxdm")
+      };
+      if (this.isSendCard) {
+        var saveJL = await this.$post(api.saveJlkSave(), saveParma, {
+          headers: "application/json"
+        });
+        fkjlid = saveJL.data;
+      }
+      var tempobj = {
+        fbnr: this.releasText,
+        type: localStorage.getItem("usertype") == "4" ? "sx" : "ls",
+        fbrdm: this.selfObj.usercode,
+        xm: this.selfObj.name, //登录人姓名
+        xxdm: localStorage.getItem("xxdm"), //学校代码
+        sffk: this.isSendCard ? "1" : "0", //是否发卡
+        kjfw: this.curAuthoer.name, //可见范围
+        sfxz: "1", //是否新增
+        imgpathlist: imgpathlist, //上传图片信息
+        dtjsrlist: this.formatDtjsrList(),
+        //dtjsrlist:[{jsrdm:this.curTeacher.gh,jsrxm:this.curTeacher.xm,jsrsfxz:"1"}],         //动态接收人
+        bjxxlist: this.getBjxxList(), //班级信息
+        bjdmlist: this.formatBjdmList(), //班级代码(教师端发卡这个变量为空""")
+        xb: this.selfObj.sex, //性别
+        tpmc: this.curCardType[0].tplj, //取图片路径
+        kplxmc:
+          this.curCardType[0].text +
+          (this.curCardType[1].text ? "-" + this.curCardType[1].text : ""),
+        dxtz: this.isMail ? "1" : "0",
+        fkpy: this.PyText,
+        fbdtsj: utilsfun.formateDateAndTimeToString(new Date()), //转格式
+        kplx: this.curCardType[0].value,
+        kpzlx: this.curCardType[1].value ? this.curCardType[1].value : "",
+        fkjlid: fkjlid,
+        dzxxlist: [],
+        replyLlist: []
+        // type:"student",
+        // xxdm:"1438",
+        // zgh:"",
+      };
+      // console.log(tempobj,378)
+      var parmaobj = {
+        sffk: this.isSendCard ? "1" : "0",
+        xxdm: localStorage.getItem("xxdm"),
+        id: "",
+        kplx: this.curCardType[0].value,
+        kpzlx: this.curCardType[1].value ? this.curCardType[1].value : "",
+        fkpy: this.PyText,
+        obj: JSON.stringify(tempobj),
+        xh: ""
+      };
+      var res = await this.$post(api.saveDynamic(), parmaobj, {
+        headers: "application/json"
+      });
+      if (res.status == 200) {
+        this.$post(
+          api.sendMessage(),
+          {
+            type: "teacher",
+            zgh: localStorage.getItem("zgh"),
+            xhArr: this.formatDtjsrList(true),
+            dxtz: this.isMail ? "1" : "0",
+            xxdm: localStorage.getItem("xxdm")
+          },
+          { headers: "application/json" }
+        );
+        this.$toast({ message: "发布成功", duration: 1000 });
+        this.$router.push({ path: "/pages/teacher/dynamic/index" });
+      }
+    },
+    selStudent() {
+      //this.$router.push({path:'/pages/teacher/cardRecord/selectStudent',query: {type:"dynamic"}})
+      this.currentView = "comp_SelectStudent";
+      this.isSelectStudent = true;
+    },
+    selCardType() {
+      this.isChangeCardLx = true;
+      this.isMask = true;
+    },
+    /**
+     * 说明:开始在textarea里填写内容
+     * 作者:RayJ
+     * 更新时间:2019-03-14
+     */
+    releasIn() {
+      if (this.releasText == "有什么新鲜事想告诉大家？") {
+        this.releasText = "";
+      }
+    },
+    /**
+     * 说明:textarea失去了焦点
+     * 作者:RayJ
+     * 更新时间:2019-03-14
+     */
+    releasOut() {
+      if (this.releasText == "") {
+        this.releasText = "有什么新鲜事想告诉大家？";
+      }
+    },
+    /**
+     * 说明:开始在textarea里填写内容
+     * 作者:RayJ
+     * 更新时间:2019-03-14
+     */
+    pyIn() {
+      if (this.PyText == "请选择下方评语,可编辑") {
+        this.PyText = "";
+      }
+    },
+    /**
+     * 说明:textarea失去了焦点
+     * 作者:RayJ
+     * 更新时间:2019-03-14
+     */
+    pyOut() {
+      // if(this.PyText == ""){
+      //     this.PyText = "请选择下方评语,可编辑"
+      // }
+    },
+
+    async getStudentInfo() {
+      var { data } = await this.$fetch(api.getStudentMsg(), {
+        xxdm: localStorage.getItem("xxdm"),
+        xh:localStorage.getItem("xh")
+      });
+      this.studentObj = data;
+    },
+    async changefile(els) {
+
+    //   let fileobj = file.file; //文件对象
+    //   let filetype; //文件格式类型
+    //   let suffix; //文件后缀名
+      // console.log(file);
+      this.isupload = true;
+
+
+
+
+      if (!els.target.files[0].size) return;
+      if(els.target.files[0].size > 10485760){
+        this.$toast('图片不能超过10M');
+        return;
+      }
+      this.fileList(els.target.files);//获取files文件组传入处理
+     
+    },
+     fileList(files){
+      for (let i = 0; i < files.length; i++) {
+        this.fileAdd(files[i]);
+      }
+    },
+    fileAdd(file){
+      let that=this
+      var form = new FormData(); // FormData 对象
+      if(file.size/1024 > 1025) { //大于1M，进行压缩上传
+        that.photoCompress(file, {
+          quality: 0.2
+        }, function(base64Codes){
+          let bl = that.convertBase64UrlToBlob(base64Codes);
+          form.append("file", bl, "file_"+Date.parse(new Date())+".jpg"); // 文件对象
+          that.upploadimage(form)
+        });
+      }else{ //小于等于1M 原图上传
+        form.append("file", file); // 文件对象
+        that.upploadimage(form)
+      }
+    },
+      // 上传
+    async upploadimage (param) {
+        let res = await this.$post(api.uploadFile(), param);
+        this.attachmentList.push({
+            url: res.data.path,
+            type: "image",
+            name: res.data.fileName,
+            showimg: res.data.basePath + res.data.path
+        });
+        this.imgnum = this.attachmentList.length;
+        if(this.attachmentList.length >= 9){
+            this.showAddImg = false;
+        }else{
+            this.showAddImg = true;
+        }
+   
+    },
+    // 图片压缩
+    photoCompress(file,w,objDiv){
+      let that=this;
+      var ready=new FileReader();
+      /*开始读取指定File对象中的内容. 当读取操作完成时,readyState属性的值会成为DONE,result属性中将包含一个data: URL格式的字符串以表示所读取文件的内容.*/
+      ready.readAsDataURL(file);
+      ready.onload=function(){
+          var re=this.result;
+          that.canvasDataURL(re,w,objDiv)
+      }
+    },
+    canvasDataURL(path, obj, callback){
+      let img = new Image();
+      img.src = path;
+      img.onload = function(){
+        let that = this;
+        // 默认按比例压缩
+        let w = that.width,
+            h = that.height,
+            scale = w / h;
+        w = obj.width || w;
+        h = obj.height || (w / scale);
+        let quality = 0.7;  // 默认图片质量为0.7
+        //生成canvas
+        let canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        // 创建属性节点
+        let anw = document.createAttribute("width");
+        anw.nodeValue = w;
+        let anh = document.createAttribute("height");
+        anh.nodeValue = h;
+        canvas.setAttributeNode(anw);
+        canvas.setAttributeNode(anh);
+        ctx.drawImage(that, 0, 0, w, h);
+        // 图像质量
+        if(obj.quality && obj.quality <= 1 && obj.quality > 0){
+            quality = obj.quality;
+        }
+        // quality值越小，所绘制出的图像越模糊
+        let base64 = canvas.toDataURL('image/jpeg', quality);
+        // 回调函数返回base64的值
+        callback(base64);
+      }
+    },
+    convertBase64UrlToBlob(urlData){
+      let arr = urlData.split(','), mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], {type:mime});
+    },
+    /**
+     * @description: base64 转文件
+     * @param {type}
+     * @return: file
+     */
+    convertBase64UrlToBlob(urlData){
+      let arr  =  urlData.split(','),  mime  =  arr[0].match(/:(.*?);/)[1],
+          bstr  =  atob(arr[1]),  n  =  bstr.length,  u8arr  =  new  Uint8Array(n);
+      while(n--){
+        u8arr[n]  =  bstr.charCodeAt(n);
+      }
+      return  new  Blob([u8arr],  {type:mime});
+    },
+    /**
+     * 说明:子组件提交了选择学生
+     * 作者:RayJ
+     * 更新时间:2019-03-23
+     */
+    submitSelect() {
+      this.isSelectStudent = false;
+      this.currentView = "";
+      //获取全选班级，年级，单个选择后转换成统一数组对象
+      this.formatAllStudentList();
+      //获取已经选取的学生名字,年级,班级
+      this.getStudentVal();
+    },
+    /**
+     * 说明:删除图片
+     * 作者:raq
+     * 更新时间:2019-03-26
+     */
+    delImg(item) {
+      var indexImg = this.attachmentList.findIndex(function(value, index, arr) {
+        return value.name == item.name;
+      });
+      this.attachmentList.splice(indexImg, 1);
+      this.imgnum = this.attachmentList.length;
+    },
+    /**
+     * 说明:获取短信通知
+     * 作者:raq
+     * 更新时间:2019-03-26
+     */
+    async getMessageNotice() {
+      var { data } = await this.$fetch(api.getMessageNotice(), {
+        xxdm: localStorage.getItem("xxdm"),
+        xqdm: localStorage.getItem("xq"),
+        xndm: localStorage.getItem("xn")
+      });
+      if (data.data == "1") {
+        this.showMessage = true;
+      } else {
+        this.showMessage = false;
+      }
+    },
+    /**
+     * 说明:格式化附件图片或者视频的数组格式
+     * 作者:RayJ
+     * 更新时间:2019-03-19
+     */
+    formatAttachment(itemList){
+        var returnArr=[];
+        for(var i=0;i<itemList.length;i++){
+        var obj = {};
+        obj.fjdx = itemList[i].size;
+        obj.fjlx = itemList[i].type;
+        obj.fjmc = "";
+        obj.fjmcsmall = "";
+        obj.fjymc = itemList[i].name;
+        obj.sclj = itemList[i].url;
+        obj.scsj = utilsfun.formateDateAndTimeToString(new Date());
+        obj.tpgd = "0";
+        obj.tpkd = "0";
+        obj.xxdm = localStorage.getItem("xxdm");
+        obj.xxid = "";
+        returnArr.push(obj)
+        }
+        return returnArr
+    },
+  }
+};
+</script>
+
+<style scoped lang="scss">
+@import "../../../../style/style.scss";
+body {
+  background-color: #fff !important;
+}
+.flod-enter-active {
+  animation-name: fadeInRight;
+  animation-duration: 0.5s;
+}
+.upinto-enter-active {
+  animation-name: fadeInUp;
+  animation-duration: 0.5s;
+}
+.releasewarp {
+  height: 100%;
+  background: #eff0f3;
+  // overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.m_releasMain {
+  width: 100%;
+  // min-height: px2rem(430px);
+  padding: px2rem(30px);
+  background: #fff;
+  // overflow: hidden;
+  .m_text {
+    width: 100%;
+    height: px2rem(200px);
+    font-size: px2rem(30px);
+    text-indent: 0;
+    border: none;
+  }
+  .m_text.empty {
+    color: #909399;
+  }
+  .m_uploadimgMain {
+    ul {
+      width: 100%;
+      float: left;
+      clear: both;
+    }
+    li {
+      width: px2rem(220px);
+      height: px2rem(200px);
+      position: relative;
+      overflow: hidden;
+      float: left;
+      background: #eff1f3;
+      margin-right: px2rem(10px);
+      margin-bottom: px2rem(10px);
+      * {
+        max-width: 100%;
+        max-height: 100%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .clearIcon {
+        left: 85%;
+        top: 14%;
+        width: px2rem(40px);
+        height: px2rem(40px);
+      }
+    }
+    .f_adduploadimg {
+      width: px2rem(220px);
+      height: px2rem(200px);
+      background: url(../../../../assets/upimgbg.png) #eff1f3 no-repeat center;
+      background-size: auto 50%;
+      position: relative;
+      overflow: hidden;
+      .addFile{
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 99;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        }
+        .addImgIcon{
+        width: px2rem(200px);
+        height: px2rem(200px);
+        img{
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+            
+        }
+        }
+      .van-uploader {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        opacity: 0;
+      }
+    }
+    .m_uploadinfo {
+      float: left;
+      width: 100%;
+      padding-top: px2rem(20px);
+      font-size: px2rem(24px);
+      color: #909399;
+    }
+  }
+}
+.m_relsesSetBox {
+  width: 100%;
+  background: #fff;
+  flex: 1;
+  margin-top: px2rem(20px);
+  padding-left: px2rem(30px);
+  // overflow: auto;
+  .f_pybox {
+    width: 100%;
+    height: px2rem(200px);
+    clear: both;
+    textarea {
+      width: 100%;
+      height: 100%;
+      font-size: px2rem(30px);
+      line-height: 1.5em;
+      padding: px2rem(5px) px2rem(10px);
+      color: #666;
+      border: none;
+    }
+  }
+  .u_setCol {
+    width: 100%;
+    height: px2rem(88px);
+    line-height: px2rem(88px);
+    border-bottom: 1px solid #e0e0e0;
+    font-size: px2rem(30px);
+    padding-right: px2rem(30px);
+    .f_tit {
+      float: left;
+    }
+    .f_value {
+      float: right;
+      color: #999;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: px2rem(500px);
+      text-align: right;
+    }
+    .f_value.arrow-right {
+      text-align: right;
+    }
+  }
+  .u_setColNoHeight {
+    width: 100%;
+
+    border-bottom: 1px solid #e0e0e0;
+    font-size: px2rem(30px);
+    padding-right: px2rem(30px);
+    .f_tit {
+      float: left;
+      padding-top: px2rem(20px);
+    }
+    .f_value {
+      float: right;
+      color: #999;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: px2rem(500px);
+      text-align: right;
+    }
+    .f_value.arrow-right {
+      text-align: right;
+    }
+  }
+  .u_setCol.noLine {
+    border-bottom: none;
+  }
+  .f_selbox {
+    width: px2rem(102px);
+    height: px2rem(62px);
+    border-radius: px2rem(31px);
+    background: #c8c8c8;
+    margin: px2rem(13px) 0;
+    position: relative;
+    float: right;
+    .f_seldot {
+      width: px2rem(56px);
+      height: px2rem(56px);
+      border-radius: px2rem(28px);
+      background: #fff;
+      position: absolute;
+      top: px2rem(3px);
+      left: px2rem(3px);
+      transition: 0.2s all;
+    }
+  }
+  .f_selbox.on {
+    background: #4cd964;
+    .f_seldot {
+      left: px2rem(42px);
+    }
+  }
+}
+.m_botRelease {
+  padding: px2rem(20px) px2rem(55px);
+  background: #fff;
+  border-top: 1px solid #e6e6e6;
+}
+.ReleaseDynamic {
+  width: px2rem(640px);
+  height: px2rem(90px);
+  border-radius: px2rem(45px);
+  background: #3e81ff;
+  font-size: px2rem(36px);
+  color: #fff;
+  line-height: px2rem(90px);
+  text-align: center;
+}
+.f_grade_picker {
+  z-index: 550;
+  position: fixed;
+  width: 100%;
+  bottom: 0;
+}
+.pinyu {
+  width: 100%;
+  padding: 0 px2rem(34px) px2rem(34px) px2rem(34px);
+  span {
+    background-color: #f4f5f7;
+    color: #303133;
+    font-size: px2rem(30px);
+    border-radius: px2rem(30px);
+    padding: px2rem(12px) px2rem(20px);
+    display: inline-block;
+    margin-right: px2rem(20px);
+    line-height: px2rem(30px);
+  }
+  .active {
+    background-color: #3e81ff;
+    color: #fff;
+  }
+}
+</style>

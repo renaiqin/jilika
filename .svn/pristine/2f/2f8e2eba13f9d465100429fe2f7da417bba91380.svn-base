@@ -1,0 +1,126 @@
+
+/**
+* 获取token
+* @returns {string}
+*/
+export let token = () => `/api/auth/jwt/token`;
+
+/**
+* 获取用户基础信息
+* @returns {string}
+*/
+export let info = () => `/api/admin/user/front/info`;
+
+
+/**
+* 查询用户信息
+* @returns {string}
+*/
+export let getUserInfo = () => `/api/jlk/jlkglIndex/getUserInfo`;
+
+/**
+* 查询最新获卡或发卡
+* @returns {string}
+*/
+export let getNewKpxxList = () => `/jlk/jlkglIndex/getNewKpxxList`;
+
+
+/**
+* 查询琅琊榜榜主
+* @returns {string}
+*/
+export let getTopKpxxList = () => `/jlkglIndex/getTopKpxxList`;
+
+
+
+
+/**
+* 获得发卡记录列表
+* @returns {string}
+*/
+export let queryPageList = () => `/api/jlk/fkjl/queryPageList`;
+
+/////////////////////////////姜璀20190228编写的接口//////////////////////////
+/**
+* 查询激励卡琅琊榜展示规则  POST /jlkyftj/cxLybzsgz
+* @returns {string}
+*/
+export let getLybGz = () => `/jlkyftj/cxLybzsgz`;
+
+
+
+/**
+* 激励卡查询班级动态  GET /jlkglIndex/getXxdtList
+* @returns {string}
+*/
+export let getXxdtList = () => `/api/jlk/jlkglIndex/getXxdtList`;
+
+
+
+/**
+* 激励卡首页班级动态获取班级
+* @returns {string}
+*/
+export let getQxBjList = () => `api/jlk/jlkglIndex/getQxNjBjList`;
+
+
+
+/**
+* 激励卡首页获取动态未读消息的数量
+* @returns {string}
+*/
+export let getXxdtNum = () => `/api/jlk/jlkglIndex/getXxdtNum`;
+
+
+
+
+/**
+* 激励卡获得当前学校周信息
+* @returns {string}
+*/
+export let getWeekList = () => `/api/base/jcXndm/getWeekList`;
+
+
+/**
+* 激励卡发卡删除记录
+* @returns {string}
+*/
+export let reCallJlkData = () => `/api/jlk/fkjl/reCallJlkData`;
+
+
+
+/**
+* 激励卡发卡记录详情
+* @returns {string}
+*/
+export let getInfo = () => `/api/jlk/fkjl/getInfo`;
+
+
+
+/**
+* 激励卡发卡获取卡片类型
+* @returns {string}
+*/
+export let getKplxByCountList = () => `/api/jlk/jlkglkpxx/getKplxByCountList`;
+
+
+///////////////////姜璀20190228获取基础数据的临时接口////////////////////////
+/**
+* 查询激励卡琅琊榜展示规则  POST /jlkyftj/cxLybzsgz
+* @returns {string}
+*/
+export let getXnxqList = () => `/jlk/getXnxqList`;
+
+/**
+* 激励卡琅琊榜统计查询  POST /jlkyftj/jlklybcx
+* @returns {string}
+*/
+export let geLybList = () => `/jlkyftj/jlklybcx`;
+
+
+/**
+* 激励卡琅琊榜统计查询  POST /jlkyftj/jlklybcx
+* @returns {string}
+*/
+export let geNjBjList = () => `/jcBjsj/getNjBjList`;
+

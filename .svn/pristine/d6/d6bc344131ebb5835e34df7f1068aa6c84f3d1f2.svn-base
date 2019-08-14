@@ -1,0 +1,656 @@
+<template>
+  <div class="releasewarp clearfix">
+      <div class="m_releasMain clearfix">
+          <textarea class="m_text empty" v-model="releasText" @click="releasIn" @blur="releasOut"></textarea>
+          <div class="m_uploadimgMain clearfix">
+              <ul class="clearfix">
+                  <li v-for="(item,index) in attachmentList" class="clearfix">
+                      <img v-if="item.type=='image'" :src="item.showimg">
+                      <video v-if="item.type=='video'" :src="item.showimg"></video>
+                      <img class="clearIcon" src="/static/img/dot-cleartxt.png" @click="delImg(item)">
+                  </li>
+                  <li class="f_adduploadimg" v-if="showAddImg">
+                    <input type="file" class="addFile" @change="changefile">
+                  </li>
+              </ul>
+              <div class="m_uploadinfo">
+                  <span>{{imgnum}}</span>/9 (文件大小不超过10M）
+              </div>
+          </div>
+      </div>
+      <div class="m_relsesSetBox">
+          <div class="u_setCol">
+              <div class="f_tit">发布给谁</div>
+              <div class="f_value" v-on:click="selTeacher">{{curTeacher.xm?curTeacher.xm:'请选择'}}</div>
+          </div>
+          <div class="u_setCol">
+              <div class="f_tit">考评类型</div>
+              <div class="f_value" v-on:click="selCardType">
+                  {{curCardType[0]?(curCardType[0].text?curCardType[0].text:'请选择'):"请选择"}}
+                  {{curCardType[1]?(curCardType[1].text?"-"+curCardType[1].text:''):""}}</div>
+          </div>
+          <div class="u_setCol" v-if="showMessage">
+              <div class="f_tit">短信通知</div>
+              <div class="f_value">
+                  <div class="f_selbox" :class="{'on':isMail}" v-on:click="isMail=!isMail">
+                      <div class="f_seldot"></div>
+                  </div>
+              </div>
+          </div>
+           <div class="m_botRelease">
+                <div class="ReleaseDynamic" v-on:click="releaseDynamic">发动态</div>
+            </div>
+      </div>
+
+
+    <transition name="upinto">
+    <van-picker v-if="isChangeCardLx" show-toolbar title="选择卡片类型" :columns="kplx" @cancel="onCancel"
+@confirm="onConfirm" @change="onTypeChange" class="f_grade_picker"/>
+    </transition>
+    <div class="mask" v-if="isMask"></div>
+
+
+  </div>
+</template>
+
+<script>
+  import { api } from "../../../../utils/Api/index";
+  import * as utilsfun from "../../../../utils/functions.js";
+  import _ from 'lodash';
+  export default {
+    name: "rankingHome",
+    data(){
+        return {
+            releasText:"有什么新鲜事想告诉大家？",
+            curTeacher:{},
+            curCardType:[],
+            isMask:false,
+            isChangeCardLx:false,
+            kplx:[],
+            kptype:[],
+            kpsubtype:[],
+            isMail:false,
+            studentObj:{},
+            isupload:false,
+            attachmentList:[],
+            imgnum:0,
+            showAddImg:true,
+            showMessage: false //是否显示短信通知
+        }
+    },
+    mounted() {
+        
+        if(localStorage.getItem('stuReleasText') != 'undefined' && localStorage.getItem('stuReleasText') != ''){
+            
+            this.releasText = localStorage.getItem('stuReleasText');
+        }
+        if(localStorage.getItem('stuAttachmentList') != 'undefined' && localStorage.getItem('stuAttachmentList') != ''){
+            this.attachmentList = JSON.parse(localStorage.getItem('stuAttachmentList'));
+
+        }
+        if(localStorage.getItem('stuCurCardType') != 'undefined' && localStorage.getItem('stuCurCardType') != ''){
+            this.curCardType = JSON.parse(localStorage.getItem('stuCurCardType'));
+        }
+        this.init();
+    },
+    methods: {
+        /**
+         * 说明:初始化基础数据并存入localStorage里(只做set不做判断是否存在,保证每次浏览页面都是最新的数据)
+         * 作者:RayJ
+         * 更新时间:2019-03-09
+         */
+        async init(){
+
+          this.getStudentInfo();
+
+            if((this.$store.getters.getDepartment).length!=0&&(this.$store.getters.getAllTeacher).length!=0){
+                this.curTeacher = this.$store.getters.getChoiceTeacher;
+                //console.log(this.curTeacher)
+            }else{
+               
+                //var res =  await this.$fetch(api.getReleaseDynamic(),parmaobj);
+                let grouplist = await this.$fetch(api.getGroupList(),{'xxdm':localStorage.getItem('xxdm')});
+                this.$store.dispatch("setDepartment",grouplist.data);
+                
+               
+
+            }
+             var parmaobj = {
+                xxdm: localStorage.getItem("xxdm"),
+                dqxn: localStorage.getItem("xn"),
+                dqxq: localStorage.getItem("xq"),
+                ckr: localStorage.getItem('xh'),
+                ckrlx: "ls"
+            };
+            var res = await this.$fetch(api.getKpAllList(), parmaobj);
+             //获取卡片和子项类型信息
+            this.$store.dispatch("setCardType", res.data);
+            this.kplx = this.formatCardType(this.$store.getters.getCardType);
+            this.$store.dispatch("setCardSubType",res.data);
+        },
+        formatCardType(data){
+            var resarr = [];
+            var typearr = [];
+            var subarr = [];
+
+            for (var i = 0; i < data.length; i++) {
+                typearr.push({
+                text: data[i].kpmc,
+                value: data[i].kpid,
+                tplj: data[i].tplj,
+                sfsj: data[i].sfsj,
+                kpsl: data[i].kpsl
+                });
+            }
+            subarr = this.formatSubCardType(0);
+            resarr.push(
+                { className: "cardtype", values: typearr },
+                { className: "cardsubtype", values: subarr }
+            );
+            return resarr;
+        },
+        /**
+         * 说明:格式化子类型列表，获取子类型列表
+         * 作者:RayJ
+         * 更新时间:2019-03-20
+         */
+        formatSubCardType(index) {
+            var data = this.$store.getters.getCardType;
+            //console.log(data,777)
+            var subarr = [];
+            if (data[index].iskpfx == 1) {
+                for (var j = 0; j < data[index].kpfxList.length; j++) {
+                subarr.push({
+                    text: data[index].kpfxList[j].fxmc,
+                    value: data[index].kpfxList[j].fxid
+                });
+                }
+            }
+            return subarr;
+        },
+        /**
+         * 说明:选中默认评语
+         * 作者:RayJ
+         * 更新时间:2019-03-20
+         */
+        getSubTypeList(index){
+            var resarr = [];
+            var curSubType = _.filter(this.$store.getters.getCardSubType,{'parent':this.$store.getters.getCardType[index].kpid});
+            for(var j=0;j<curSubType.length;j++){
+                resarr.push({text:curSubType[j].kpmc,value:curSubType[j].kpid});
+            }
+            return resarr
+        },
+        /**
+         * 说明:切换主类型
+         * 作者:RayJ
+         * 更新时间:2019-03-20
+         */
+        onTypeChange(picker, values){
+            this.cardNum = values[0].kpsl;
+            var data = this.$store.getters.getCardType;
+            var subindex = _.findIndex(data, { kpid: values[0].value });
+            picker.setColumnValues(1, this.formatSubCardType(subindex));
+            
+        },
+        onCancel(){
+            this.isChangeCardLx = false;
+            this.isMask = false;
+        },
+        /**
+         * 说明:确定卡片类型
+         * 作者:RayJ
+         * 更新时间:2019-03-21
+         */
+        async  onConfirm(value){
+            this.cardNum = value[0].kpsl;
+            this.curCardType = [];
+            if (value[1]) {
+                this.curCardType.push(value[0]);
+                this.curCardType.push(value[1]);
+            } else {
+                this.curCardType.push(value[0]);
+                this.curCardType.push({});
+            }
+            this.isChangeCardLx = false;
+            this.isMask = false;
+            this.sfsj = value[0].sfsj;
+
+            //console.log(value,22223344)
+            localStorage.setItem('stuCurCardType',JSON.stringify(this.curCardType))
+            //console.log(this.curCardType);
+        },
+        /**
+         * 说明:发布动态
+         * 作者:RayJ
+         * 更新时间:2019-03-13
+         */
+        async releaseDynamic(){
+            var imgpathlist = [];
+            for(var i=0;i<this.attachmentList.length;i++){
+                imgpathlist.push({
+                    imgpath: this.attachmentList[i].url,
+                    imglx: "img"
+                })
+            }
+
+            //console.log(this.curTeacher);
+            //console.log(this.curCardType);
+            if (
+                this.releasText == "" ||
+                this.releasText == "有什么新鲜事想告诉大家？"
+            ) {
+                this.$toast({ message: "发布内容不能为空", duration: 1000 });
+                return;
+            }
+            if (
+                this.releasText.length > 140
+            ) {
+                this.$toast({ message: "发布内容不能超过140个字！", duration: 1000 });
+                return;
+            }
+            if (!this.curTeacher.gh && this.curTeacher.gh != '') {
+                this.$toast({ message: "请选择发布给谁", duration: 1000 });
+                return;
+            }
+            if (!this.curCardType[0]) {
+                this.$toast({ message: "请选择考评类型", duration: 1000 });
+                return;
+            }
+            let tplj = this.curCardType[0].tplj.split('146')[1];
+               // tplj = tplj[1].split('/')
+            var tempobj = {
+                fbnr:this.releasText,
+                type:"xs",   
+                fbrdm:this.studentObj.xh,                    
+                xm:this.studentObj.xm,              //登录人姓名
+                xxdm:localStorage.getItem('xxdm'),                        //学校代码
+                sffk:"0",                           //是否发卡
+                kjfw:'gr',                          //可见范围
+                sfxz:'1',                           //是否新增
+                imgpathlist:imgpathlist,            //上传图片信息
+                dtjsrlist:[{jsrdm:this.curTeacher.gh,jsrxm:this.curTeacher.xm,jsrsfxz:"1"}],         //动态接收人
+                bjxxlist:[{
+                    bjmc:this.studentObj.bj,
+                    bjdm:this.studentObj.bjid
+                }],                                     //班级信息
+                bjdmlist:[this.studentObj.bjid],        //班级代码(教师端发卡这个变量为空""")
+                xb:"",                                  //性别
+
+                tpmc:tplj,   //取图片路径
+                kplxmc:this.curCardType[0].text+this.curCardType[1]?this.curCardType[1].text:"",
+                dxtz:this.isMail?'1':'0',
+                fkpy:"",
+                fbdtsj:utilsfun.formateDateAndTimeToString(new Date()),          //转格式
+                kplx:this.curCardType[0].value,            
+                kpzlx:this.curCardType[1].value?this.curCardType[1].value:"",
+                fkjlid:"",
+                dzxxlist: [],
+                replyLlist: []
+                // type:"student",
+                // xxdm:"1438",
+                // zgh:"",
+                
+            };
+            var parmaobj = {
+                sffk:"1",
+                xxdm:localStorage.getItem('xxdm'),
+                id:"",
+                kplx:this.curCardType[0].value,
+                kpzlx:this.curCardType[1].value?this.curCardType[1].value:"",
+                fkpy:this.releasText,
+                obj:JSON.stringify(tempobj),
+                xh:localStorage.getItem('xh'),
+            }
+
+            var res = await this.$post(api.saveDynamic(),parmaobj,{headers:'application/json'}) 
+            this.$toast({ message: "发布成功", duration: 1000 });
+            this.$router.push({ path: "/pages/student/dynamic/index" });
+            this.$store.dispatch("setChoiceTeacher", {});
+        },
+        selTeacher(){
+            this.$router.push({path:'/pages/student/dynamic/seldepartment'})
+        },
+        selCardType(){
+            this.isChangeCardLx = true;
+            this.isMask = true;
+        },
+        /**
+         * 说明:开始在textarea里填写内容
+         * 作者:RayJ
+         * 更新时间:2019-03-14
+         */
+        releasIn(){
+            if(this.releasText=="有什么新鲜事想告诉大家？"){
+                this.releasText = "";
+            }
+        },
+        /**
+         * 说明:textarea失去了焦点
+         * 作者:RayJ
+         * 更新时间:2019-03-14
+         */
+        releasOut(){
+            if(this.releasText == ""){
+                this.releasText = "有什么新鲜事想告诉大家？"
+            }
+            localStorage.setItem('stuReleasText',this.releasText)
+        },
+        async getStudentInfo(){
+            var {data} = await this.$fetch(api.getStudentMsg(),{xxdm:localStorage.getItem('xxdm'),xh:localStorage.getItem('xh')})
+            this.studentObj = data;
+            //console.log(this.studentObj,214)
+        },
+        async changefile(els) {
+            this.isupload = true;
+            if (!els.target.files[0].size) return;
+            if(els.target.files[0].size > 10485760){
+                this.$toast('图片不能超过10M');
+                return;
+            }
+            this.fileList(els.target.files);//获取files文件组传入处理
+      
+        },
+        fileList(files){
+            for (let i = 0; i < files.length; i++) {
+                this.fileAdd(files[i]);
+            }
+        },
+        fileAdd(file){
+            let that=this
+            var form = new FormData(); // FormData 对象
+            if(file.size/1024 > 1025) { //大于1M，进行压缩上传
+                that.photoCompress(file, {
+                quality: 0.2
+                }, function(base64Codes){
+                let bl = that.convertBase64UrlToBlob(base64Codes);
+                form.append("file", bl, "file_"+Date.parse(new Date())+".jpg"); // 文件对象
+                that.upploadimage(form)
+                });
+            }else{ //小于等于1M 原图上传
+                form.append("file", file); // 文件对象
+                that.upploadimage(form)
+            }
+        },
+        // 上传
+        async upploadimage (param) {
+            let res = await this.$post(api.uploadFile(), param);
+            this.attachmentList.push({
+                url: res.data.path,
+                type: "image",
+                name: res.data.fileName,
+                showimg: res.data.basePath + res.data.path
+            });
+            this.imgnum = this.attachmentList.length;
+            if(this.attachmentList.length >= 9){
+                this.showAddImg = false;
+            }else{
+                this.showAddImg = true;
+            }
+            localStorage.setItem('stuAttachmentList',JSON.stringify(this.attachmentList));
+        },
+        // 图片压缩
+        photoCompress(file,w,objDiv){
+            let that=this;
+            var ready=new FileReader();
+            /*开始读取指定File对象中的内容. 当读取操作完成时,readyState属性的值会成为DONE,result属性中将包含一个data: URL格式的字符串以表示所读取文件的内容.*/
+            ready.readAsDataURL(file);
+            ready.onload=function(){
+                var re=this.result;
+                that.canvasDataURL(re,w,objDiv)
+            }
+        },
+        canvasDataURL(path, obj, callback){
+            let img = new Image();
+            img.src = path;
+            img.onload = function(){
+                let that = this;
+                // 默认按比例压缩
+                let w = that.width,
+                    h = that.height,
+                    scale = w / h;
+                w = obj.width || w;
+                h = obj.height || (w / scale);
+                let quality = 0.7;  // 默认图片质量为0.7
+                //生成canvas
+                let canvas = document.createElement('canvas');
+                let ctx = canvas.getContext('2d');
+                // 创建属性节点
+                let anw = document.createAttribute("width");
+                anw.nodeValue = w;
+                let anh = document.createAttribute("height");
+                anh.nodeValue = h;
+                canvas.setAttributeNode(anw);
+                canvas.setAttributeNode(anh);
+                ctx.drawImage(that, 0, 0, w, h);
+                // 图像质量
+                if(obj.quality && obj.quality <= 1 && obj.quality > 0){
+                    quality = obj.quality;
+                }
+                // quality值越小，所绘制出的图像越模糊
+                let base64 = canvas.toDataURL('image/jpeg', quality);
+                // 回调函数返回base64的值
+                callback(base64);
+            }
+        },
+        convertBase64UrlToBlob(urlData){
+            let arr = urlData.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], {type:mime});
+        },
+        /**
+         * @description: base64 转文件
+         * @param {type}
+         * @return: file
+         */
+        convertBase64UrlToBlob(urlData){
+            let arr  =  urlData.split(','),  mime  =  arr[0].match(/:(.*?);/)[1],
+                bstr  =  atob(arr[1]),  n  =  bstr.length,  u8arr  =  new  Uint8Array(n);
+            while(n--){
+                u8arr[n]  =  bstr.charCodeAt(n);
+            }
+            return  new  Blob([u8arr],  {type:mime});
+        },
+        /**
+         * 说明:删除图片
+         * 作者:raq
+         * 更新时间:2019-03-26
+         */
+        delImg(item) {
+            var indexImg = this.attachmentList.findIndex(function(value, index, arr) {
+                return value.name == item.name;
+            });
+            this.attachmentList.splice(indexImg, 1);
+            this.imgnum = this.attachmentList.length;
+            localStorage.setItem('stuAttachmentList',JSON.stringify(this.attachmentList));
+        },
+          /**
+         * 说明:获取短信通知
+         * 作者:raq
+         * 更新时间:2019-03-26
+         */
+        async getMessageNotice() {
+            var { data } = await this.$fetch(api.getMessageNotice(), {
+                xxdm: localStorage.getItem("xxdm"),
+                xqdm: localStorage.getItem("xq"),
+                xndm: localStorage.getItem("xn")
+            });
+            if (data.data == "1") {
+                this.showMessage = true;
+            } else {
+                this.showMessage = false;
+            }
+        },
+    },
+  }
+</script>
+
+<style scoped lang="scss">
+@import '../../../../style/style.scss';
+    body{
+        background-color: #fff !important;
+    }
+    .flod-enter-active{
+        animation-name:fadeInRight;animation-duration:.5s;
+    }
+    .upinto-enter-active{
+        animation-name:fadeInUp;animation-duration:.5s;
+    }
+    .releasewarp{
+        height: 100%;
+        background: #eff0f3;
+        display: flex;
+        flex-direction: column;
+    }
+    .m_releasMain{
+        width: 100%;
+        padding: px2rem(30px);
+        background: #FFF;
+        .m_text{
+            width: 100%;
+            height: px2rem(200px);
+            font-size: px2rem(30px);
+            text-indent: 0;
+            border:none;
+        }
+        .m_text.empty{
+            color: #909399;
+        }
+        .m_uploadimgMain{
+            clear: both;
+            ul{
+                width: 100%;
+                float: left;
+                clear: both;
+            }
+            li{
+                width: px2rem(220px);
+                height: px2rem(200px); 
+                position: relative;
+                overflow: hidden;
+                float: left;
+                background: #eff1f3;
+                margin-right: px2rem(10px);
+                margin-bottom: px2rem(10px);
+                *{
+                    max-width: 100%;
+                    max-height: 100%;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%,-50%);
+                }
+                .clearIcon {
+                    left: 85%;
+                    top: 14%;
+                    width: px2rem(40px);
+                    height: px2rem(40px);
+                }
+            }
+            .f_adduploadimg{
+                width: px2rem(220px);
+                height: px2rem(200px);
+                background: url(../../../../assets/upimgbg.png) #eff1f3 no-repeat center;
+                background-size: auto 50%;
+                position: relative;
+                overflow: hidden;
+               .addFile{
+                    opacity: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 99;
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    }
+                    .addImgIcon{
+                    width: px2rem(200px);
+                    height: px2rem(200px);
+                    img{
+                        width: 100%;
+                        height: 100%;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        
+                    }
+                }
+            }
+            .m_uploadinfo{
+                float: left;
+                width: 100%;
+                padding-top: px2rem(20px);
+                font-size: px2rem(24px);
+                color: #909399;
+            }
+        }
+    }
+    .m_relsesSetBox{
+        width: 100%;
+        background: #FFF;
+        flex: 1;
+        margin-top: px2rem(20px);
+        padding-left: px2rem(30px);
+        .u_setCol{
+            width: 100%;
+            height: px2rem(88px);
+            line-height: px2rem(88px);
+            border-bottom: 1px solid #e0e0e0;
+            font-size: px2rem(30px);
+            padding-right: px2rem(30px);
+            .f_tit{
+                float: left;
+            }
+            .f_value{
+                float: right;
+            }
+        }
+        .f_selbox{
+            width: px2rem(102px);
+            height: px2rem(62px);
+            border-radius: px2rem(31px);
+            background: #c8c8c8;
+            margin:px2rem(13px) 0;
+            position: relative;
+            .f_seldot{
+                width: px2rem(56px);
+                height: px2rem(56px);
+                border-radius: px2rem(28px);
+                background: #FFF;
+                position: absolute;
+                top: px2rem(3px);
+                left: px2rem(3px);
+                transition: .2s all;
+            }
+        }
+        .f_selbox.on{
+            background: #4cd964;
+            .f_seldot{
+                left: px2rem(42px);
+            }
+        }
+    }
+    .m_botRelease{
+         height: px2rem(90px);
+    }
+    .ReleaseDynamic{
+        margin:px2rem(20px) auto;
+        width: px2rem(640px);
+        height: px2rem(90px);
+        border-radius: px2rem(45px);
+        background: #3e81ff;
+        font-size: px2rem(36px);
+        color: #FFF;
+        line-height: px2rem(90px);
+        text-align: center;
+    }
+    .f_grade_picker{
+        z-index: 550;
+        position: fixed;
+        width: 100%;
+        bottom: 0;
+    }
+</style>

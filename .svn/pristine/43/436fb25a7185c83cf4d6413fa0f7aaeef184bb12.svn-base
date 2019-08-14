@@ -1,0 +1,38 @@
+import Vue from 'vue'
+import Router from 'vue-router'
+
+Vue.use(Router)
+
+export default new Router({
+  routes: [
+    {
+      path: "/",
+      redirect: '/pages/teacher/cardRecord/cardRecord'
+    },
+    {
+      path: "/pages/teacher/home",
+      name: "home",
+      component: () =>
+        import("../views/pages/teacher/home.vue")
+    },
+    {
+      path: "/pages/teacher/setClass",
+      name: "setClass",
+      component: () =>
+        import("../views/pages/teacher/setClass.vue")
+    },
+    {
+      path: "/pages/teacher/cardRecord/selectStudent",
+      name: "selectStudent",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/selectStudent.vue")
+    },
+    {
+      path: "/pages/teacher/cardRecord/cardRecord",
+      name: "cardRecord",
+      component: () =>
+        import("../views/pages/teacher/cardRecord/cardRecord.vue")
+    }
+  ]
+})
+

@@ -1,0 +1,131 @@
+
+<template>
+  
+</template>
+
+<script>
+  import { api } from "../../utils/Api/index"
+  
+export default {
+  name:'selectCard',
+  data() {
+    return {
+      params:{},
+      paramsData:[],
+    }
+  },
+  mounted(){
+    localStorage.setItem('isClue',true);
+    this.paramsData = this.getQueryId(window.location.href);
+    this.gettoken()
+  },
+  methods: {
+    // 获取url用户名和密码
+    getQueryId (url) {
+      var params = [], h;
+      var hash = url.slice(url.indexOf("?") + 1).split('&');
+      for (var i = 0; i < hash.length; i++) {
+          h = hash[i].split("=");
+          params.push(h[0]);
+          params[h[0]] = h[1];
+      }
+      return params;
+    },
+    /**
+     * 30170115145913049    30170115145913001
+     * http://192.168.0.42:8080/#/pages/index?username=143830170115145913004
+&password=888888
+     * http://192.168.0.42:8080/#/pages/index?username=1438127&password=888888
+     * @description: 获取token
+     * @param {string}  
+     * @return: 
+     */
+    gettoken(){
+      let that = this;
+      window.localStorage.setItem('istoken',false);//此方法不需要传token
+      // {username: '1438127||143830170115145913001',password:'888888',kaptcha:'kaptcha_name'} that.getQueryId('username')  that.getQueryId('password')
+      that.$post(api.token(), {username:this.paramsData['username'],password:this.paramsData['password'],kaptcha:'kaptcha_name'},{headers:'application/json'}).then(res => {//143830170115145913001
+        if(res.status == 200){
+          window.localStorage.setItem('token',res.data);
+          if(!res.data){
+            this.$toast({ message: "登录失败！", duration: 1000 });
+            return;
+          }
+          that.getInfo();
+        }
+      });
+    },
+    /**
+     * @description: 获取用户基础信息 此接口不返回用户名
+     * @param {type} 
+     * @return: 
+     */
+    getInfo(){
+      let that = this;
+      window.localStorage.setItem('istoken',false);//此方法不需要传token
+      that.$fetch(api.info(),{token:window.localStorage.getItem('token')}).then(res => {
+        that.userinfo = {
+          userid:res.id,
+          usertype:res.type,
+          username:res.username,
+          xxdm:res.xxdm,
+          xxmc:res.xxmc
+        };
+        
+        localStorage.setItem("xxdm",res.xxdm); //学校代码
+        localStorage.setItem("xxmc",res.xxmc);  //学校名称
+        localStorage.setItem("userid",res.id);  //用户id
+        localStorage.setItem("usertype",res.type);
+        if(res.type==3){
+            localStorage.setItem("zgh",res.usercode);
+            localStorage.removeItem("xh");
+        }else if(res.type==4){
+            localStorage.setItem("xh",res.usercode);
+            localStorage.removeItem("zgh");
+        }
+        // localStorage.setItem("zgh",'127');//res.username.substring(res.xxdm.length)
+        that.getUserInfo();
+        that.getCurrentXnxq();
+      });
+    },
+    /**
+     * @description: 获取用户信息  此接口返回真正的用户信息
+     * @param {type} 
+     * @return: 
+     */
+    getUserInfo(){
+      let that = this;
+      window.localStorage.setItem('istoken',true);   //此方法不需要传token
+      that.$fetch(api.getUserInfo(),{username:that.userinfo.username,userid:that.userinfo.userid}).then(res => {
+        localStorage.setItem("truename",res.data.name);
+        localStorage.setItem("loginObj",JSON.stringify(res.data));
+        // console.log(res,79);
+      });
+    },
+     /**
+     * @description: 获取学年学期
+     * @param {type} 
+     * @return: 
+     */
+    getCurrentXnxq(){
+      let that = this;
+      window.localStorage.setItem('istoken',true);//此方法不需要传token
+      that.$fetch(api.getCurrentXnxq(),{xxdm:localStorage.getItem("xxdm")}).then(res => {
+        if(res.status == 200){
+          localStorage.setItem("xn",res.data.xn); //学年
+          localStorage.setItem("xq",res.data.xq);  //学期
+          localStorage.setItem("xqmc",res.data.xqmc);  //学期名称
+          if(localStorage.getItem("usertype")=="3" || localStorage.getItem("usertype")=="2"){
+            that.$router.push('/pages/teacher/home');
+          }else if(localStorage.getItem("usertype")=="4"){
+            that.$router.push('/pages/student/home');
+          }
+          
+        }
+      });
+    },
+  }
+}
+</script>
+
+

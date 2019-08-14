@@ -1,0 +1,45 @@
+/**
+ * 通用
+ */
+
+export const size = 10; // 分页数量
+
+/**
+ * 说明:阿拉伯数字转汉字数字
+ * 作者:RayJ
+ * 更新时间:2019-03-04 
+ */
+export function num2word(num){
+    switch (num){
+        case "1":
+            return "一"
+            break;
+        case "2":
+            return "二"
+            break;
+        case "3":
+            return "三"
+            break;
+        case "4":
+            return "四"
+            break;
+        case "5":
+            return "五"
+            break;
+        case "6":
+            return "六"
+            break;
+        case "7":
+            return "七"
+            break;
+        case "8":
+            return "八"
+            break;
+        case "9":
+            return "九"
+            break;
+        case "10":
+            return "十"
+            break;
+    }
+}
